@@ -1,3 +1,4 @@
+import { useKeyboardViewport } from './hooks/useKeyboardViewport';
 import { RemoteSocket } from './lib/remoteSocket';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -515,6 +516,7 @@ export default function App() {
 
   // Mouse & touch gesture refs (unified deterministic TouchGestureState FSM)
   const cursorRef = useRef({ x: 640, y: 360 });
+  const lastInputPointRef = useRef<{ x: number; y: number } | null>(null);
   const touchGestureRef = useRef<TouchGestureState>(createTouchGestureState());
   const nativeScrollRef = useRef<{ y: number; remainder: number; count: number; x: number; anchorY: number } | null>(null);
   const touchFallbackPinchRef = useRef<{ midX: number; midY: number; dist: number } | null>(null);
@@ -552,17 +554,28 @@ export default function App() {
   // Orientation change tracking
   const prevLandscapeRef = useRef<boolean | null>(null);
 
-  const panClampOptions = useMemo(
-    () => ({
-      allowEdgePan: true,
-      edgePadding: DEFAULT_EDGE_PADDING,
-      bottomInset: softKeys ? 46 : 0,
-    }),
-    [softKeys],
-  );
-
   const remoteW = stats.width > 0 ? stats.width : sizeRef.current.width;
   const remoteH = stats.height > 0 ? stats.height : sizeRef.current.height;
+  const viewRef = useRef<ViewTransform>({ scale: 1, panX: 0, panY: 0 });
+  const keyboardLayout = useKeyboardViewport({
+    enabled: phase === 'live', softKeys, stage: stageRef,
+    read: () => ({ mode: viewMode, zoom, view: { ...viewRef.current }, remoteW, remoteH,
+      anchor: { ...(lastInputPointRef.current ?? cursorRef.current) } }),
+    apply: (size, next) => {
+      viewRef.current = next.view;
+      setBox(previous => previous.w === size.w && previous.h === size.h ? previous : size);
+      setViewMode(next.mode);
+      setZoom(next.zoom);
+      setPan(previous => previous.panX === next.view.panX && previous.panY === next.view.panY
+        ? previous : { panX: next.view.panX, panY: next.view.panY });
+    },
+  });
+  const panClampOptions = useMemo(
+    () => ({ allowEdgePan: true, edgePadding: DEFAULT_EDGE_PADDING,
+      bottomInset: softKeys && !keyboardLayout.viewport ? 46 : 0 }),
+    [softKeys, keyboardLayout.viewport],
+  );
+
   const view: ViewTransform = computeViewTransform(
     box.w,
     box.h,
@@ -573,7 +586,6 @@ export default function App() {
     pan,
     panClampOptions,
   );
-  const viewRef = useRef(view);
   viewRef.current = view;
 
   const remoteInput = phase === 'live' && !menuOpen && !connectDialog;
@@ -740,6 +752,7 @@ export default function App() {
     (button: 'left' | 'right' | 'middle', x: number, y: number) => {
       if (displayPrefsRef.current.viewOnly) return;
       const mapped = applyMouseButtonSwap(button, displayPrefsRef.current.swapMouseButtons);
+      if (mapped === 'left') lastInputPointRef.current = { x, y };
       finishPendingClick();
       if (touchModeRef.current) placeCursor(x, y);
       send({ type: 'mouse', action: 'move', x, y });
@@ -851,11 +864,13 @@ export default function App() {
     const el = stageRef.current;
     if (!el) return;
     const update = () => {
+      if (keyboardLayout.pending.current) return;
       const w = el.clientWidth;
       const h = el.clientHeight;
       setBox((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
       if (w > 0 && h > 0) {
-        const isLandscape = w > h;
+        const isLandscape = isCoarseDevice && window.screen.orientation
+          ? window.screen.orientation.type.startsWith('landscape') : w > h;
         if (prevLandscapeRef.current !== null && prevLandscapeRef.current !== isLandscape) {
           setViewMode('fit');
           setZoom(1);
@@ -942,13 +957,14 @@ export default function App() {
   }, [focusDesktopCapture]);
 
   const openSoftKeyboard = useCallback(() => {
+    keyboardLayout.begin();
     // iOS requires focus during the original tap to open the system keyboard.
     flushSync(() => {
       closeChrome();
       setSoftKeys(true);
     });
     softKeyboardInputRef.current?.focus({ preventScroll: true });
-  }, [closeChrome]);
+  }, [closeChrome, keyboardLayout.begin]);
 
   const toggleSoftKeyboard = () => {
     if (softKeys) {
@@ -1152,6 +1168,7 @@ export default function App() {
       setResolutionOptions(null);
       setCursorShape(null);
       setCursorEmbedded(false);
+      lastInputPointRef.current = null;
       placeCursor(sizeRef.current.width / 2, sizeRef.current.height / 2);
       setStats(EMPTY_STATS);
       setRtt(0);
@@ -1641,6 +1658,7 @@ export default function App() {
         panX: next.pan.panX,
         panY: next.pan.panY,
       };
+      keyboardLayout.markManual(viewRef.current, next.viewMode, next.zoom);
       setViewMode(next.viewMode);
       setZoom(next.zoom);
       setPan(next.pan);
@@ -1676,6 +1694,7 @@ export default function App() {
         panX: next.pan.panX,
         panY: next.pan.panY,
       };
+      keyboardLayout.markManual(viewRef.current, next.viewMode, next.zoom);
       setViewMode(next.viewMode);
       setZoom(next.zoom);
       setPan(next.pan);
@@ -1686,7 +1705,7 @@ export default function App() {
   applyPinchStepRef.current = applyPinchStep;
 
   const panBy = useCallback(
-    (dx: number, dy: number) => {
+    (dx: number, dy: number, manual = true) => {
       const cur = viewRef.current;
       const curFit = fitScale(box.w, box.h, remoteW, remoteH);
       const nextPan = clampPan(
@@ -1700,6 +1719,7 @@ export default function App() {
         panClampOptions,
       );
       viewRef.current = { ...cur, panX: nextPan.panX, panY: nextPan.panY };
+      if (manual) keyboardLayout.markManual(viewRef.current, 'custom', curFit > 0 ? cur.scale / curFit : 1);
       setPan(nextPan);
       if (viewMode === 'fit') {
         setViewMode('custom');
@@ -1710,6 +1730,7 @@ export default function App() {
   );
 
   followCursorRef.current = (x, y) => {
+    if (keyboardLayout.active.current) return;
     const view = viewRef.current;
     const point = mapFromRemote(x, y, view);
     const visibleHeight = Math.min(box.h, window.visualViewport?.height ?? box.h) - panClampOptions.bottomInset;
@@ -1720,7 +1741,7 @@ export default function App() {
       ? Math.min(box.w - marginX, Math.max(marginX, point.x)) - point.x : 0;
     const dy = remoteH * view.scale > visibleHeight
       ? Math.min(visibleHeight - marginY, Math.max(marginY, point.y)) - point.y : 0;
-    if (dx || dy) panBy(dx, dy);
+    if (dx || dy) panBy(dx, dy, false);
   };
 
   // Forward text efficiently: single ASCII chars as native keystrokes, CJK/multi-char as batched seq
@@ -2663,15 +2684,18 @@ export default function App() {
     (isTouchLayout || virtualCursorVisible) &&
     phase === 'live';
 
+  const stageViewport = keyboardLayout.viewport ?? visibleViewport;
+
   return (
     <section
       ref={stageRef}
       className={`stage${hand ? ' hand' : ''}`}
-      style={phase === 'live' && visibleViewport ? {
-        position: 'fixed', inset: 'auto', left: visibleViewport.left, top: visibleViewport.top,
-        width: visibleViewport.width, height: visibleViewport.height,
+      style={phase === 'live' && stageViewport ? {
+        position: 'fixed', inset: 'auto', left: stageViewport.left, top: stageViewport.top,
+        width: stageViewport.width, height: stageViewport.height,
       } : undefined}
       data-testid="stage"
+      data-keyboard-avoiding={keyboardLayout.viewport ? 'true' : undefined}
       data-remote-active={remoteInput ? 'true' : 'false'}
       data-scroll-style={displayPrefs.scrollStyle}
       onPointerDown={handlePointerDown}

@@ -56,9 +56,14 @@ export function SoftKeyboardBar({
     const viewport = window.visualViewport;
     if (!viewport) return;
 
+    const initialHeight = viewport.height;
+    const initialWidth = viewport.width;
     let keyboardWasVisible = false;
     const syncKeyboard = () => {
-      const inset = keyboardInset(window.innerHeight, viewport.height, viewport.offsetTop);
+      const inset = Math.max(
+        keyboardInset(window.innerHeight, viewport.height, viewport.offsetTop),
+        Math.abs(viewport.width - initialWidth) < 80 ? initialHeight - viewport.height : 0,
+      );
       if (inset > 80) {
         keyboardWasVisible = true;
       } else if (keyboardWasVisible && inset < 24) {

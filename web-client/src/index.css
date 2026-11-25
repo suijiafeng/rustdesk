@@ -516,6 +516,10 @@ button:focus-visible {
   border-top: 1px solid #40454c;
 }
 
+.stage[data-keyboard-avoiding="true"] .softbar {
+  bottom: 0;
+}
+
 .soft-key-capture {
   position: fixed;
   top: 0;
