@@ -1,4 +1,3 @@
-import React from 'react';
 import { Server, X } from 'lucide-react';
 import { t, type Locale } from '../../lib/i18n';
 

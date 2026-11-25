@@ -34,6 +34,7 @@ export interface SessionStats {
 type MenuTab = 'control' | 'input' | 'display';
 
 export interface SessionMenuProps {
+  onNotify: (text: string, error?: boolean) => void;
   locale: Locale;
   audioEnabled: boolean;
   audioIssue: string | null;
@@ -67,7 +68,6 @@ export interface SessionMenuProps {
   preferredCodec: PreferredCodec;
   privacyEnabled: boolean;
   privacyPending: boolean;
-  privacyIssue: boolean;
   onTogglePrivacy: () => void;
   remoteClipboard: string;
   onClose: () => void;

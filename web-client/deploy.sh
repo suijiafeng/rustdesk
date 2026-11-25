@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
 # RustDesk Web Client — Docker One-Click Deployment Script
 # Usage:
 #   ./deploy.sh
@@ -27,6 +29,15 @@ EOF
 }
 
 while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p|--port|-b|--bind|-t|--token|-n|--name)
+      if [[ $# -lt 2 ]]; then
+        echo "[ERROR] Missing value for $1" >&2
+        print_usage
+        exit 1
+      fi
+      ;;
+  esac
   case "$1" in
     -p|--port)
       DEFAULT_PORT="$2"
@@ -155,13 +166,20 @@ echo "[INFO] Building and starting ${CONTAINER_NAME} on ${HOST_BIND}:${SELECTED_
 "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" up -d --build --remove-orphans
 
 echo "[INFO] Waiting for gateway health check..."
-HEALTH_URL="http://127.0.0.1:${SELECTED_PORT}/api/health"
-for (( i = 1; i <= 30; i++ )); do
-  if command -v curl >/dev/null 2>&1 && curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
+healthy=0
+for (( i = 1; i <= 40; i++ )); do
+  container_health="$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+  if [[ "$container_health" == "healthy" ]]; then
+    healthy=1
     break
   fi
-  sleep 1
+  sleep 3
 done
+
+if (( healthy == 0 )); then
+  echo "[ERROR] Gateway health check did not pass. Inspect docker logs for $CONTAINER_NAME." >&2
+  exit 1
+fi
 
 echo ""
 echo "============================================================"

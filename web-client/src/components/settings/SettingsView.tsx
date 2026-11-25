@@ -482,7 +482,7 @@ function AboutSection({
         <div className="rd-about-meta">
           <div>
             <span className="text-[var(--ink-soft)]">{t(locale, 'aboutVersion')}: </span>
-            <span className="font-mono-tabular">1.0.0</span>
+            <span className="font-mono-tabular">{__APP_VERSION__}</span>
           </div>
           <div>
             <span className="text-[var(--ink-soft)]">{t(locale, 'aboutProtocol')}: </span>
@@ -507,7 +507,7 @@ function AboutSection({
             {t(locale, 'aboutWebsite')}
           </a>
           <a
-            href="https://github.com/rustdesk/rustdesk"
+            href="https://github.com/suijiafeng/rustdesk/tree/feature/web-client/web-client"
             target="_blank"
             rel="noopener noreferrer"
             className="rd-about-link"

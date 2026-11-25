@@ -30,6 +30,10 @@ const gestureRows = {
 
 export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePanel }) {
   const label = (key: I18nKey) => t(p.locale, key);
+  React.useEffect(() => {
+    if (p.decoderError) p.onNotify(formatConnectionError(p.locale, p.decoderError).message, true);
+  }, [p.decoderError, p.locale, p.onNotify]);
+  const notify = (text: string) => p.onNotify(text);
   const monitors = p.peer?.displays ?? [];
   const panelName = { toolbar: 'session', actions: 'moreActions', display: 'screens', gestures: 'dockGuide' } as const;
 
@@ -49,10 +53,7 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
           {p.mobilePanel === 'actions' && <>
             <div className="tool-group">
               {toggle(Volume2, 'remoteAudio', p.audioEnabled, p.onToggleAudio)}
-              {p.audioIssue && <p role="alert">{p.audioIssue}</p>}
               {p.peer?.privacyAllowed && toggle(Shield, 'privacyMode', p.privacyEnabled, p.onTogglePrivacy, p.privacyPending || p.viewOnly)}
-              {p.privacyPending && <p role="status">{label('privacyWaiting')}</p>}
-              {p.privacyIssue && <p role="alert">{label('privacyFailed')}</p>}
             </div>
             <div className="tool-group">{action(Activity, 'diagTitle', p.onToggleDiagnostics)}</div>
             <div className="tool-group">
@@ -69,19 +70,19 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
           {p.mobilePanel === 'display' && <>
             {monitors.length > 1 && <div className="tool-group tool-options">{monitors.map(d =>
               <button key={d.index} aria-pressed={d.index === p.display} disabled={d.online === false}
-                onClick={() => p.onSwitchDisplay(d.index)}><Monitor />{d.name || label('screens')+' '+(d.index+1)}</button>)}</div>}
+                onClick={() => { p.onSwitchDisplay(d.index); notify(label('requestSent')+' · '+(d.name || label('screens')+' '+(d.index+1))); }}><Monitor />{d.name || label('screens')+' '+(d.index+1)}</button>)}</div>}
             <div className="tool-group">
               <details><summary><ScanEye />{label('view')}<small>{p.viewMode === 'fit' ? label('fit') : p.zoomPercent+'%'}</small></summary>
                 <div className="tool-options">
-                  <button data-testid="view-fit" onClick={p.onFit}>{label('fit')}</button><button onClick={p.onOriginal}>100%</button>
+                  <button data-testid="view-fit" onClick={() => { p.onFit(); notify(label('fit')); }}>{label('fit')}</button><button onClick={() => { p.onOriginal(); notify('100%'); }}>100%</button>
                   <button aria-label={label('zoomOut')} onClick={p.onZoomOut}>−</button>{p.zoomPercent}%
                   <button aria-label={label('zoomIn')} onClick={p.onZoomIn}>＋</button>
-                  <button aria-pressed={p.hand} onClick={p.onToggleHand}>{label('pan')}</button>
+                  <button aria-pressed={p.hand} onClick={() => { p.onToggleHand(); notify(label(p.hand ? 'panOff' : 'panOn')); }}>{label('pan')}</button>
                 </div>
               </details>
               {p.sizes.length > 0 && <label className="tool-row"><Monitor /><span>{label('remoteResolution')}</span>
                 <select disabled={p.viewOnly} value={p.sizes.findIndex(s => s.width === p.stats.width && s.height === p.stats.height)}
-                  onChange={e => { const size = p.sizes[Number(e.target.value)]; if (size) p.onResolution(size.width,size.height); }}>
+                  onChange={e => { const size = p.sizes[Number(e.target.value)]; if (size) { p.onResolution(size.width,size.height); notify(label('requestSent')+' · '+size.width+' × '+size.height); } }}>
                   <option disabled value={-1}>{p.stats.width} × {p.stats.height}</option>
                   {p.sizes.map((s,i) => <option key={i} value={i}>{s.width} × {s.height}</option>)}
                 </select></label>}
@@ -89,21 +90,20 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
                 <summary><SlidersHorizontal />{label('qualityAndFps')}<small>{label(qualityNames[p.quality])} · {p.targetFps} FPS</small></summary>
                 <div className="tool-options mode-options">
                   {(['low', 'balanced', 'best'] as const).map(level =>
-                    <button key={level} aria-pressed={p.quality === level} onClick={() => p.onChangeQuality(level, p.targetFps)}>
+                    <button key={level} aria-pressed={p.quality === level} onClick={() => { p.onChangeQuality(level, p.targetFps); notify(label('requestSent')+' · '+label(qualityNames[level])); }}>
                       {label(qualityNames[level])}
                     </button>)}
                 </div>
-                <label className="tool-row"><span>{label('targetFps')}</span><select value={p.targetFps} onChange={e => p.onChangeQuality(p.quality, Number(e.target.value))}>
+                <label className="tool-row"><span>{label('targetFps')}</span><select value={p.targetFps} onChange={e => { p.onChangeQuality(p.quality, Number(e.target.value)); notify(label('requestSent')+' · '+e.target.value+' FPS'); }}>
                   {[15,30,60].map(n => <option key={n}>{n}</option>)}</select></label>
-                <label className="tool-row"><span>{label('sessionCodecLabel')}</span><select value={p.preferredCodec} onChange={e => p.onChangeQuality(p.quality,p.targetFps,e.target.value as PreferredCodec)}>
+                <label className="tool-row"><span>{label('sessionCodecLabel')}</span><select value={p.preferredCodec} onChange={e => { p.onChangeQuality(p.quality,p.targetFps,e.target.value as PreferredCodec); notify(label('requestSent')+' · '+(e.target.value === 'auto' ? label('codecAuto') : e.target.value.toUpperCase())); }}>
                   {['auto','h264','vp8','vp9','av1'].map(v => <option key={v} value={v}>{v==='auto'?label('codecAuto'):v.toUpperCase()}</option>)}</select></label>
               </details>
             </div>
             {monitors.length > 1 && <div className="tool-group">
-              {toggle(Focus,'followWindow',p.followWindow,p.onToggleFollowWindow)}
+              {toggle(Focus,'followWindow',p.followWindow,() => { p.onToggleFollowWindow(); notify(label('followWindow')+' · '+label(p.followWindow ? 'optionOff' : 'optionOn')); })}
             </div>}
           </>}
-          {p.decoderError && <p role="alert">{formatConnectionError(p.locale,p.decoderError).message}</p>}
         </section>
       )}
     </div>

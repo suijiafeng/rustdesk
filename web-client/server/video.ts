@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 export const HEADER_LEN = 32;
 
 export const CODEC_VP8 = 1;

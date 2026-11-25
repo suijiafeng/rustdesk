@@ -1,3 +1,4 @@
+import { RemoteSocket } from './lib/remoteSocket';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { MousePointer2 } from 'lucide-react';
@@ -105,7 +106,6 @@ import {
 } from './lib/mapping';
 import {
   decodeFrame,
-  formatBitrate,
   wsUrl,
   type ClientMessage,
   type PeerMessage,
@@ -200,6 +200,7 @@ export default function App() {
   const [forceRelay, setForceRelay] = useState(Boolean(prefs.forceRelay));
   const [gatewayToken, setGatewayToken] = useState('');
   const [authRequired, setAuthRequired] = useState(false);
+  const [webRtcEnabled, setWebRtcEnabled] = useState(false);
   const [devices, setDevices] = useState<SavedDevice[]>(() => loadSavedDevices());
 
   useEffect(() => {
@@ -385,17 +386,28 @@ export default function App() {
   const [targetFps, setTargetFps] = useState(() =>
     resolveTargetFps(displayPrefs.qualityPreset, displayPrefs.customFps),
   );
+  const [sessionTip, setSessionTip] = useState<{ text: string; error: boolean } | null>(null);
+  const showSessionTip = useCallback((text: string, error = false) => {
+    setSessionTip({ text, error });
+  }, []);
+  useEffect(() => {
+    if (!sessionTip) return;
+    const timer = window.setTimeout(() => setSessionTip(null), sessionTip.error ? 4000 : 2000);
+    return () => window.clearTimeout(timer);
+  }, [sessionTip]);
+  useEffect(() => {
+    if (phase !== 'live') setSessionTip(null);
+  }, [phase]);
   const [privacyEnabled, setPrivacyEnabled] = useState(false);
   const [privacyPending, setPrivacyPending] = useState(false);
-  const [privacyIssue, setPrivacyIssue] = useState(false);
   useEffect(() => {
     if (!privacyPending) return;
     const timeout = window.setTimeout(() => {
       setPrivacyPending(false);
-      setPrivacyIssue(true);
+      showSessionTip(t(locale, 'privacyFailed'), true);
     }, 15000);
     return () => window.clearTimeout(timeout);
-  }, [privacyPending]);
+  }, [privacyPending, locale, showSessionTip]);
   const [remoteClipboard, setRemoteClipboard] = useState('');
 
   // Viewport & chrome state
@@ -453,12 +465,11 @@ export default function App() {
   }, [cursorShape, cursorEmbedded, displayPrefs.autoKeyboard]);
   const [visibleViewport, setVisibleViewport] = useState<{ width: number; height: number; left: number; top: number } | null>(null);
   const [pageZoomed, setPageZoomed] = useState(false);
-  const [qualityMonitor, setQualityMonitor] = useState(false);
   const [restartState, setRestartState] = useState<'requested' | 'waiting' | null>(null);
   const restartDeadline = useRef(0);
   const reconnectRequest = useRef<ConnectRequest | null>(null);
   const connectGeneration = useRef(0);
-  const routeLabel = t(locale, peer?.route === 'relay' ? 'routeRelay' : peer?.route === 'direct' ? 'routeDirect' : 'routeUnknown');
+  const routeLabel = t(locale, peer?.route === 'webrtc-relay' ? 'routeWebRtcRelay' : peer?.route === 'webrtc' ? 'routeWebRtcUnknown' : peer?.route === 'webrtc-direct' ? 'routeWebRtc' : peer?.route === 'relay' ? 'routeRelay' : peer?.route === 'direct' ? 'routeDirect' : 'routeUnknown');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState<boolean>(() => {
     try {
       return new URLSearchParams(window.location.search).get('diag') === '1';
@@ -482,7 +493,7 @@ export default function App() {
   const captureComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
   const pressedChrByCodeRef = useRef<Map<string, string>>(new Map());
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | RemoteSocket | null>(null);
   const decoderRef = useRef<RemoteDecoder | null>(null);
   const sizeRef = useRef({ width: 1280, height: 720 });
   const phaseRef = useRef<ConnectionPhase>(phase);
@@ -587,6 +598,7 @@ export default function App() {
   const audioRef = useRef<RemoteAudio | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [audioIssue, setAudioIssue] = useState<'audioUnsupported' | 'audioDenied' | 'audioFailed' | null>(null);
+
   const stopAudio = useCallback(() => {
     const player = audioRef.current;
     audioRef.current = null;
@@ -606,10 +618,12 @@ export default function App() {
     if (audioRef.current) {
       stopAudio();
       send({ type: 'audio', enabled: false });
+      showSessionTip(t(locale, 'audioStopped'));
       return;
     }
     if (typeof AudioDecoder === 'undefined' || typeof AudioContext === 'undefined') {
       setAudioIssue('audioUnsupported');
+      showSessionTip(t(locale, 'audioUnsupported'), true);
       return;
     }
     const socket = wsRef.current;
@@ -618,6 +632,7 @@ export default function App() {
       if (socket !== wsRef.current || (player && player !== audioRef.current)) return;
       stopAudio();
       setAudioIssue('audioFailed');
+      showSessionTip(t(locale, 'audioFailed'), true);
       send({ type: 'audio', enabled: false });
     };
     try {
@@ -625,7 +640,10 @@ export default function App() {
       audioRef.current = player;
       setAudioEnabled(true);
       await player.resume();
-      if (player === audioRef.current && socket === wsRef.current) send({ type: 'audio', enabled: true });
+      if (player === audioRef.current && socket === wsRef.current) {
+        send({ type: 'audio', enabled: true });
+        showSessionTip(t(locale, 'audioRequested'));
+      }
     } catch {
       fail();
     }
@@ -785,7 +803,7 @@ export default function App() {
 
   // Raw WebSocket ping-pong probing when Diagnostic Overlay is active during a session
   useEffect(() => {
-    if ((!diagnosticsOpen && !qualityMonitor) || (phase !== 'live' && phase !== 'connecting')) {
+    if (!diagnosticsOpen || (phase !== 'live' && phase !== 'connecting')) {
       return;
     }
 
@@ -807,14 +825,15 @@ export default function App() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [diagnosticsOpen, qualityMonitor, phase]);
+  }, [diagnosticsOpen, phase]);
 
   // Fetch /api/health on mount
   useEffect(() => {
     let active = true;
-    fetch('/api/health')
+    fetch('/api/health', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
+        if (active) setWebRtcEnabled(data?.webRtcEnabled === true);
         if (active && data && typeof data.authRequired === 'boolean') {
           setAuthRequired(data.authRequired);
         }
@@ -1129,7 +1148,6 @@ export default function App() {
       setPeer(null);
       setRemoteClipboard('');
       setPrivacyEnabled(false);
-      setPrivacyIssue(false);
       setPrivacyPending(false);
       setResolutionOptions(null);
       setCursorShape(null);
@@ -1144,7 +1162,7 @@ export default function App() {
       setPhase('connecting');
       setStatusDetail('detailOpeningSocket');
 
-      const sock = new WebSocket(wsUrl());
+      const sock = webRtcEnabled && activeMode === 'id' && !targetForceRelay ? new RemoteSocket(wsUrl()) : new WebSocket(wsUrl());
       sock.binaryType = 'arraybuffer';
       wsRef.current = sock;
       let receivedTerminalError = false;
@@ -1317,8 +1335,8 @@ export default function App() {
             if (!msg.privacyAllowed) setPrivacyPending(false);
             break;
           case 'privacyResult':
+            showSessionTip(t(locale, msg.failed ? 'privacyFailed' : msg.enabled ? 'privacyOn' : 'privacyOff'), msg.failed);
             if (typeof msg.enabled === 'boolean') setPrivacyEnabled(msg.enabled);
-            setPrivacyIssue(msg.failed);
             setPrivacyPending(false);
             break;
           case 'restartPermission':
@@ -1335,6 +1353,7 @@ export default function App() {
           case 'audioDenied':
             stopAudio();
             setAudioIssue('audioDenied');
+            showSessionTip(t(locale, 'audioDenied'), true);
             break;
           case 'audioFormat':
             audioRef.current?.configure(msg.sampleRate, msg.channels);
@@ -1467,6 +1486,7 @@ export default function App() {
       serverKey,
       forceRelay,
       gatewayToken,
+      webRtcEnabled,
       ensureDecoder,
       noteFrame,
       placeCursor,
@@ -2793,11 +2813,6 @@ export default function App() {
         />
       )}
 
-      {qualityMonitor && !diagnosticsOpen && phase === 'live' && (
-        <div className="quality-monitor" data-testid="quality-monitor">
-          {routeLabel} · {t(locale, 'browserGateway')} {diagSummary.currentRttMs === null ? '—' : Math.round(diagSummary.currentRttMs)} ms · {stats.fps} FPS · {formatBitrate(stats.bitrate)}
-        </div>
-      )}
       {restartState && <div className="restart-notice" role="status">
         {t(locale, restartState === 'requested' ? 'restartWaiting' : 'retryWaiting')}
         <button type="button" onClick={restartState === 'requested' ? () => setRestartState(null) : disconnect}>{t(locale,'cancel')}</button>
@@ -2808,15 +2823,18 @@ export default function App() {
           stats={stats}
           summary={diagSummary}
           routeLabel={routeLabel}
+          browserDirect={peer?.route?.startsWith('webrtc')}
           encryptionLabel={t(locale, peer?.encrypted ? 'linkEncrypted' : 'linkPlain')}
-          monitor={qualityMonitor}
-          onToggleMonitor={() => setQualityMonitor(value => !value)}
           hostRttMs={rtt}
-          onReset={resetDiagnostics}
           onClose={() => setDiagnosticsOpen(false)}
         />
       )}
 
+      {isTouchLayout && phase === 'live' && (
+        <div className="session-tip-region" aria-live="polite" aria-atomic="true">
+          {sessionTip && <div className="session-tip" data-testid="session-tip">{sessionTip.text}</div>}
+        </div>
+      )}
       {showMobileDock && (
         <MobileDock
           locale={locale}
@@ -2895,6 +2913,7 @@ export default function App() {
 
       {showSessionMenu && (
         <SessionMenu
+          onNotify={showSessionTip}
           onRestart={requestRestart}
           mobilePanel={mobilePanel}
           locale={locale}
@@ -2930,11 +2949,10 @@ export default function App() {
           preferredCodec={displayPrefs.codec}
           privacyEnabled={privacyEnabled}
           privacyPending={privacyPending}
-          privacyIssue={privacyIssue}
           onTogglePrivacy={() => {
             if (!peer?.privacyAllowed || privacyPending || displayPrefs.viewOnly) return;
-            setPrivacyIssue(false);
             setPrivacyPending(true);
+            showSessionTip(t(locale, 'privacyWaiting'));
             send({ type: 'privacy', enabled: !privacyEnabled });
           }}
           remoteClipboard={remoteClipboard}

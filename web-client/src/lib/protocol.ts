@@ -39,7 +39,7 @@ export interface PeerEncodingInfo {
 }
 
 export interface PeerMessage {
-  route?: 'direct' | 'relay';
+  route?: 'direct' | 'relay' | 'webrtc-direct' | 'webrtc-relay' | 'webrtc';
   privacyAllowed?: boolean;
   clipboardAllowed?: boolean;
   restartAllowed?: boolean;

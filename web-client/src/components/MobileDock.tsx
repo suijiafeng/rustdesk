@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronLeft, ChevronRight, Keyboard, Layers2, CircleHelp, Monitor, MousePointer2, Pointer } from 'lucide-react';
 import { t, type Locale } from '../lib/i18n';
 import type { MobilePanel } from './MobileSessionPanel';
@@ -16,7 +15,7 @@ interface Props {
 export function MobileDock({ locale, activePanel, touchMode, onToggleTouchMode, onToggleKeyboard, onCollapse, onOpenMenu }: Props) {
   const buttons = [
     ['dock-keyboard', 'keyboard', Keyboard, onToggleKeyboard, false],
-    ['dock-input-mode', touchMode ? 'touch' : 'mouse', touchMode ? Pointer : MousePointer2, onToggleTouchMode, false],
+    ['dock-input-mode', touchMode ? 'touch' : 'mouse', touchMode ? Pointer : MousePointer2, onToggleTouchMode, !touchMode],
     ['dock-display', 'screens', Monitor, () => onOpenMenu('display'), activePanel === 'display'],
     ['dock-gestures', 'dockGuide', CircleHelp, () => onOpenMenu('gestures'), activePanel === 'gestures'],
     ['dock-menu', 'moreActions', Layers2, () => onOpenMenu('actions'), activePanel === 'actions'],

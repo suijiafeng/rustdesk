@@ -26,6 +26,7 @@ export interface RdViewState {
 }
 
 declare global {
+  const __APP_VERSION__: string;
   interface Window {
     __rd?: RdRuntimeState;
     __rdView?: RdViewState;

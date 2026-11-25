@@ -213,14 +213,9 @@ button:focus-visible {
   opacity: 1;
 }
 
-.pull.fullscreen-subtle {
-  opacity: 0.16;
-}
 
-.pull.fullscreen-subtle:hover,
-.pull.fullscreen-subtle:focus-visible {
-  opacity: 0.98;
-}
+
+
 
 .pull-pill {
   display: inline-flex;
@@ -642,12 +637,12 @@ button:focus-visible {
   z-index: 4;
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: calc(12px + env(safe-area-inset-left, 0px));
-  width: 240px;
+  width: 280px;
   max-width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   padding: 9px 11px;
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(15, 23, 42, 0.68);
+  background: var(--remote-toolbar-surface);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   color: #f8fafc;
@@ -676,7 +671,7 @@ button:focus-visible {
   .diag-overlay {
     top: calc(32px + env(safe-area-inset-top, 0px));
     left: calc(10px + env(safe-area-inset-left, 0px));
-    width: min(236px, calc(100vw - 20px));
+    width: min(280px, calc(100vw - 20px));
   }
 
   .sheet.sheet-menu {
@@ -1789,38 +1784,6 @@ button:focus-visible {
   }
 }
 
-/* ============================================================================
-   Distraction-Free Fullscreen Shell Controls
-   ============================================================================ */
-.rd-fs-floating-actions {
-  position: absolute;
-  top: calc(10px + env(safe-area-inset-top, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  z-index: 15;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 10px;
-  background: var(--rd-card-bg);
-  border: 1px solid var(--rd-card-border);
-  opacity: 0.72;
-  transition: opacity 150ms ease;
-}
-
-.rd-fs-floating-actions:hover,
-.rd-fs-floating-actions:focus-within {
-  opacity: 1;
-}
-
-.rd-mobile-shell.is-fullscreen .rd-hero-container {
-  padding-top: calc(44px + env(safe-area-inset-top, 0px));
-}
-
-
-
-
-
 /* Mobile remote-session chrome */
 .remote-tools,.remote-capsule,.remote-menu-panel {
   background:var(--remote-toolbar-surface); color:#f3f5f8; border:1px solid #40454c; color-scheme:dark;
@@ -1890,11 +1853,10 @@ button:focus-visible {
 .remote-menu-panel dl>div { padding:6px 0; }
 .remote-menu-panel dd,.remote-menu-panel p { font-size:13px; color:#c2cad3; margin:3px 0 8px; }
 
-.quality-monitor,.restart-notice {
+.restart-notice {
   position:absolute; left:max(10px,env(safe-area-inset-left)); top:max(10px,env(safe-area-inset-top));
   background:#20252cef; color:white; padding:5px 9px; border-radius:6px; font-size:12px;
 }
-.quality-monitor { z-index:3; pointer-events:none; }
 .restart-notice { z-index:45; }
 .restart-notice button { margin-inline-start:8px; color:inherit; text-decoration:underline; }
 
@@ -1949,3 +1911,50 @@ button:focus-visible {
     font-size: max(16px, 1em);
   }
 }
+
+.session-tip-region {
+  position: absolute;
+  z-index: 50;
+  top: calc(12px + var(--view-top));
+  inset-inline: max(12px, var(--view-left)) max(12px, var(--view-right));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.session-tip {
+  max-width: min(360px, 100%);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--remote-toolbar-surface);
+  color: #f3f5f8;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 8px #0004;
+}
+
+.diag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+.diag-route {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: #bcc6d0;
+}
+.diag-values {
+  margin: 0;
+  border-top: 1px solid #ffffff18;
+  font-size: 13px;
+}
+.diag-values > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+.diag-values dt { color: #bcc6d0; }
+.diag-values dd { margin: 0; text-align: end; }

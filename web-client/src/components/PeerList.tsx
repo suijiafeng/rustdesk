@@ -1,4 +1,3 @@
-import React from 'react';
 import { Laptop, Monitor, Star, Trash2 } from 'lucide-react';
 import { formatPeerId, type SavedDevice } from '../lib/devices';
 import { t, type Locale } from '../lib/i18n';

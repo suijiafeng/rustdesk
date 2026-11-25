@@ -86,6 +86,15 @@ workspace member. `base::config::keys` re-exports the handful of keys
 * Declare every `external fun` in `ffi.FFI` (`flutter/android/app/src/main/kotlin/ffi.kt`) and export it from Rust as `Java_ffi_FFI_*`. A class elsewhere that needs one calls it through `FFI`.
 * From Rust, reach app classes only through objects Kotlin passed in (`call_method` on a `GlobalRef`), never by a class name such as `find_class("com/carriez/...")`. Mark each Kotlin method Rust calls this way `@Keep`, or R8 renames it in release builds and the call fails with `NoSuchMethodError`.
 
+## React Web Client
+
+The standalone React frontend and Node.js gateway live in `web-client/`.
+Use its [README](web-client/README.md) for setup and deployment. Work in that
+directory with Node.js 24 and Yarn 1.22.22. Run `yarn typecheck`,
+`yarn test`, and `yarn build` as appropriate to the change.
+The package version in `web-client/package.json` supplies the About screen.
+The Flutter Web architecture below applies to the separate Flutter target.
+
 ## Web (Flutter Web) Architecture
 
 Flutter Web in this repo is **not** "Dart compiled to JS via Flutter alone". The runtime is split:

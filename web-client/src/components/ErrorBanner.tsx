@@ -1,4 +1,3 @@
-import React from 'react';
 import { AlertCircle, KeyRound, Settings, X } from 'lucide-react';
 import { formatConnectionError } from '../lib/errors';
 import { t, type Locale } from '../lib/i18n';

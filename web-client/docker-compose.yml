@@ -15,6 +15,7 @@ services:
       PORT: 3000
       NODE_OPTIONS: "--dns-result-order=ipv4first"
       RUSTDESK_GATEWAY_TOKEN: "${RUSTDESK_GATEWAY_TOKEN:-}"
+      RUSTDESK_ENABLE_WEBRTC: "${RUSTDESK_ENABLE_WEBRTC:-false}"
     init: true
     healthcheck:
       test:

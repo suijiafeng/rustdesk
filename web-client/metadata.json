@@ -1,5 +1,0 @@
-{
-  "name": "RustDesk Web Client",
-  "description": "Zero-transcoding WebCodecs browser client and native Node.js WebSocket gateway for RustDesk remote desktop sessions.",
-  "requestFramePermissions": []
-}

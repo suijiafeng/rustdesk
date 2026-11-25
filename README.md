@@ -1,3 +1,7 @@
+## Web client branch
+
+This branch includes [RustDesk Web Client](web-client/README.md), a React frontend with a Node.js gateway. The Web client documentation covers local development, Render and Docker deployment, browser requirements, and mobile controls.
+
 <p align="center">
   <img src="res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
   <a href="#raw-steps-to-build">Build</a> •

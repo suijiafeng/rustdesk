@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { serveWebRtcSignal } from './server/webrtcSignal.ts';
 import { serveSocket } from './server/session.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +23,8 @@ async function startServer() {
   const port = Number(process.env.PORT) || 3000;
   const gatewayToken = normalizeGatewayToken(process.env.RUSTDESK_GATEWAY_TOKEN);
 
+  const webRtcEnabled = process.env.RUSTDESK_ENABLE_WEBRTC?.trim().toLowerCase() === 'true';
+
   app.disable('x-powered-by');
 
   const faviconSvg =
@@ -34,10 +37,12 @@ async function startServer() {
   });
 
   app.get('/api/health', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       ok: true,
       service: 'rustdesk-web-gateway',
       authRequired: gatewayToken.length > 0,
+      webRtcEnabled,
     });
   });
 
@@ -66,7 +71,15 @@ async function startServer() {
       return;
     }
 
-    if (pathname === '/ws') {
+    if (pathname === '/ws/webrtc') {
+      if (!webRtcEnabled) {
+        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+        return;
+      }
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        serveWebRtcSignal(ws, gatewayToken);
+      });
+    } else if (pathname === '/ws') {
       wss.handleUpgrade(request, socket, head, (ws) => {
         serveSocket(ws, { token: gatewayToken });
       });
