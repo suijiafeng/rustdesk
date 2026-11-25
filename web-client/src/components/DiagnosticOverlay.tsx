@@ -26,7 +26,7 @@ export function DiagnosticOverlay({
   const rows = [
     ['statSize', stats.width && stats.height ? `${stats.width} × ${stats.height}` : '—'],
     ['statCodec', stats.codec],
-    ['statFps', stats.fps],
+    ['statFps', `${stats.fps} FPS`],
     ['statBitrate', formatBitrate(stats.bitrate)],
     [browserDirect ? 'browserPeer' : 'browserGateway', formatMs(summary.currentRttMs)],
     ['reportedRtt', formatMs(hostRttMs > 0 ? hostRttMs : null)],

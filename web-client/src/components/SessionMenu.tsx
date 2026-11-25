@@ -1,11 +1,11 @@
+import { RestartAction } from './RestartAction';
 import { AdaptiveSelect } from './AdaptiveSelect';
 import { MobileSessionPanel, type MobilePanel } from './MobileSessionPanel';
 import React, { useState } from 'react';
 import {
   Activity,
-  Keyboard,
+  Clipboard, Shield, LockKeyhole, Volume2, Gauge, Film, Focus, Hand, MousePointer2,
   Power,
-  RefreshCw,
   Sliders,
   Monitor,
   X,
@@ -31,7 +31,7 @@ export interface SessionStats {
   streamState: StreamActivityState;
 }
 
-type MenuTab = 'control' | 'input' | 'display';
+type MenuTab = 'control' | 'display';
 
 export interface SessionMenuProps {
   clipboardSync: boolean;
@@ -40,26 +40,18 @@ export interface SessionMenuProps {
   onNotify: (text: string, error?: boolean) => void;
   locale: Locale;
   audioEnabled: boolean;
-  audioIssue: string | null;
   onToggleAudio: () => void;
   mobileLayout: boolean;
-  cursorEmbedded: boolean;
   followWindow: boolean;
   onToggleFollowWindow: () => void;
-  enlargeCursor: boolean;
-  onToggleEnlargeCursor: () => void;
   phase: ConnectionPhase;
   peer: PeerMessage | null;
   decoderError: string;
   display: number;
   touchMode: boolean;
-  rightArmed: boolean;
   viewOnly: boolean;
-  followRemoteCursor: boolean;
-  onToggleFollowCursor: () => void;
   sizes: { width: number; height: number }[];
   onResolution: (width: number, height: number) => void;
-  showRemoteCursor: boolean;
   diagnosticsOpen: boolean;
   stats: SessionStats;
   rtt: number;
@@ -69,21 +61,15 @@ export interface SessionMenuProps {
   privacyEnabled: boolean;
   privacyPending: boolean;
   onTogglePrivacy: () => void;
-  remoteClipboard: string;
   onClose: () => void;
   onOpenConnection: () => void;
   onRestart: () => void;
   onDisconnect: () => void;
   onToggleDiagnostics: () => void;
-  onToggleViewOnly: () => void;
-  onToggleRemoteCursor: () => void;
   onToggleTouchMode: () => void;
   onSwitchDisplay: (index: number) => void;
-  onRefresh: () => void;
   onQuickKey: (name: 'Esc' | 'Tab' | 'Ctrl+C' | 'Ctrl+V' | 'Ctrl+Alt+Del' | 'Lock') => void;
-  onRightClick: () => void;
   onChangeQuality: (quality: QualityLevel, fps: number, codec?: PreferredCodec) => void;
-  onSendClipboard: (text: string) => void;
 }
 
 export function SessionMenu(props: SessionMenuProps & { mobilePanel: MobilePanel }) {
@@ -93,81 +79,48 @@ export function SessionMenu(props: SessionMenuProps & { mobilePanel: MobilePanel
 
 function DesktopSessionMenu({
   clipboardSync, clipboardAllowed, onToggleClipboardSync,
+  privacyEnabled, privacyPending, onTogglePrivacy, onNotify,
   locale,
   audioEnabled,
-  audioIssue,
   onToggleAudio,
   mobileLayout,
-  cursorEmbedded,
   followWindow,
   onToggleFollowWindow,
-  enlargeCursor,
-  onToggleEnlargeCursor,
   phase,
   peer,
   decoderError,
   display,
   touchMode,
-  rightArmed,
   viewOnly,
-  followRemoteCursor, onToggleFollowCursor, sizes, onResolution,
-  showRemoteCursor,
+  sizes, onResolution,
   diagnosticsOpen,
   stats,
   rtt,
   quality,
   targetFps,
   preferredCodec,
-  remoteClipboard,
   onClose,
   onOpenConnection,
   onRestart,
   onDisconnect,
   onToggleDiagnostics,
-  onToggleViewOnly,
-  onToggleRemoteCursor,
   onToggleTouchMode,
   onSwitchDisplay,
-  onRefresh,
   onQuickKey,
-  onRightClick,
   onChangeQuality,
-  onSendClipboard,
 }: SessionMenuProps) {
   const [activeTab, setActiveTab] = useState<MenuTab>('control');
-  const [clipDraft, setClipDraft] = useState('');
-  const [clipNotice, setClipNotice] = useState('');
 
   const displays = peer?.displays ?? [];
   const hasMultipleDisplays = displays.length > 1;
+  const resolutionIndex = sizes.findIndex(s => s.width === stats.width && s.height === stats.height);
   const hostTitle = peer?.hostname || peer?.username || 'Host';
   const platformLabel = peer?.platform || 'remote';
   const linkLabel = peer?.encrypted ? t(locale, 'linkEncrypted') : t(locale, 'linkPlain');
   const displayRtt = rtt || stats.delayMs;
 
-  const handleSendClip = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clipDraft.trim()) return;
-    onSendClipboard(clipDraft);
-    setClipDraft('');
-    setClipNotice(t(locale, 'clipSent'));
-    window.setTimeout(() => setClipNotice(''), 2000);
-  };
-
-  const handleCopyRemote = async () => {
-    if (!remoteClipboard) return;
-    try {
-      await navigator.clipboard.writeText(remoteClipboard);
-      setClipNotice(t(locale, 'clipCopied'));
-    } catch {
-      setClipNotice(t(locale, 'clipDenied'));
-    }
-    window.setTimeout(() => setClipNotice(''), 2000);
-  };
-
   const tabs: Array<{ id: MenuTab; label: string; icon: React.ReactNode }> = [
     { id: 'control', label: t(locale, 'menuTabControl'), icon: <Sliders size={14} /> },
-    { id: 'input', label: t(locale, 'menuTabInput'), icon: <Keyboard size={14} /> },
     { id: 'display', label: t(locale, 'menuTabDisplay'), icon: <Monitor size={14} /> },
   ];
 
@@ -259,238 +212,67 @@ function DesktopSessionMenu({
 
         <div className="session-menu-body" key={activeTab}>
           {activeTab === 'control' && (
-            <div className="flex flex-col" role="tabpanel">
-              <div className="session-group flex flex-wrap items-center gap-2">
-                {mobileLayout && (
-                  <button type="button" className="rd-btn" onClick={onRefresh}>
-                    <RefreshCw size={14} />
-                    <span>{t(locale, 'refresh')}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={`rd-btn${viewOnly ? ' active' : ''}`}
-                  data-testid="menu-view-only"
-                  aria-pressed={viewOnly}
-                  onClick={onToggleViewOnly}
-                >
-                  {t(locale, 'optViewOnly')}
-                </button>
+            <div role="tabpanel">
+              <div className="session-group session-mode-switch" role="group" aria-label={t(locale, 'input')}>
+                <button type="button" aria-pressed={touchMode} onClick={() => {
+                  if (!touchMode) { onToggleTouchMode(); onNotify(t(locale, 'touch')); }
+                }}><Hand size={18} />{t(locale, 'touch')}</button>
+                <button type="button" aria-pressed={!touchMode} onClick={() => {
+                  if (touchMode) { onToggleTouchMode(); onNotify(t(locale, 'mouse')); }
+                }}><MousePointer2 size={18} />{t(locale, 'mouse')}</button>
               </div>
               <div className="session-group">
-                <label className="rd-check-row">
-                  <input type="checkbox" checked={audioEnabled} onChange={onToggleAudio} />
-                  <span>{t(locale, 'remoteAudio')}</span>
+                <label className="session-setting-row"><Volume2 /><span>{t(locale, 'remoteAudio')}</span>
+                  <input className="ui-switch" type="checkbox" role="switch" checked={audioEnabled} onChange={onToggleAudio} />
                 </label>
-                {audioIssue && <p role="alert" className="text-xs text-[var(--bad)]">{audioIssue}</p>}
+                <label className="session-setting-row"><Clipboard /><span>{t(locale, 'clipSync')}</span>
+                  <input className="ui-switch" type="checkbox" role="switch" checked={clipboardSync} disabled={!clipboardAllowed} onChange={onToggleClipboardSync} />
+                </label>
+                {peer?.privacyAllowed && <label className="session-setting-row"><Shield /><span>{t(locale, 'privacyMode')}</span>
+                  <input className="ui-switch" type="checkbox" role="switch" checked={privacyEnabled} disabled={privacyPending || viewOnly} onChange={onTogglePrivacy} />
+                </label>}
+              </div>
+              <div className="session-group">
+                {peer?.restartAllowed && <RestartAction locale={locale} className="session-setting-row" onConfirm={onRestart} />}
+                <button type="button" className="session-setting-row" onClick={() => onQuickKey('Lock')}><LockKeyhole /><span>{t(locale, 'lockScreen')}</span></button>
+                <button type="button" className="session-setting-row destructive" data-testid="disconnect" onClick={onDisconnect}><Power /><span>{t(locale, 'disconnectRemote')}</span></button>
               </div>
             </div>
           )}
-
-          {/* Tab 2: Input (Shortcuts, Soft Keyboard, Right Click, Clipboard) */}
-          {activeTab === 'input' && (
-            <div className="flex flex-col" role="tabpanel">
-              <div className="session-group">
-                <div className="text-xs font-semibold text-[var(--ink-soft)] mb-2">
-                  {t(locale, 'input')}
-                </div>
-                <div className="flex flex-wrap gap-2" data-testid="quickbar">
-                {!mobileLayout && (
-                  <button
-                    type="button"
-                    className="rd-btn"
-                    data-testid="touch-mode"
-                    onClick={onToggleTouchMode}
-                  >
-                    {touchMode ? t(locale, 'touch') : t(locale, 'mouse')}
-                  </button>
-                )}
-                  {mobileLayout && (
-                    <>
-                      <button type="button" className="rd-btn" onClick={() => onQuickKey('Ctrl+C')}>
-                        Ctrl+C
-                      </button>
-                      <button type="button" className="rd-btn" onClick={() => onQuickKey('Ctrl+V')}>
-                        Ctrl+V
-                      </button>
-                      <button
-                        type="button"
-                        className="rd-btn"
-                        onClick={() => onQuickKey('Ctrl+Alt+Del')}
-                      >
-                        Ctrl+Alt+Del
-                      </button>
-                    </>
-                  )}
-                  <button type="button" className="rd-btn" onClick={() => onQuickKey('Lock')}>
-                    {t(locale, 'lockScreen')}
-                  </button>
-                  {!mobileLayout && (
-                    <button
-                      type="button"
-                      className={`rd-btn${rightArmed ? ' active' : ''}`}
-                      aria-pressed={touchMode ? rightArmed : undefined}
-                      title={t(locale, touchMode ? 'dockArmRight' : 'dockRightAtCursor')}
-                      onClick={onRightClick}
-                    >
-                      {t(locale, 'rightClick')}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="session-group">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-xs font-semibold text-[var(--ink-soft)]">
-                    {t(locale, 'clipboard')}
-                  </span>
-                  {clipNotice && <span className="text-xs text-[var(--ok)]">{clipNotice}</span>}
-                </div>
-                <label className="tool-row">
-                  <span>{t(locale, 'clipSync')}</span>
-                  <input type="checkbox" role="switch" checked={clipboardSync} disabled={!clipboardAllowed} onChange={onToggleClipboardSync} />
-                </label>
-                <form className="flex gap-2" onSubmit={handleSendClip}>
-                  <input
-                    type="text"
-                    className="rd-input flex-1"
-                    data-testid="clipboard-input"
-                    value={clipDraft}
-                    placeholder={t(locale, 'clipboardPlaceholder')}
-                    onChange={(e) => setClipDraft(e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    className="rd-btn primary"
-                    data-testid="clipboard-send"
-                    disabled={!clipDraft.trim()}
-                  >
-                    {t(locale, 'send')}
-                  </button>
-                </form>
-                {remoteClipboard && (
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span
-                      className="text-xs text-[var(--ink)] truncate font-mono-tabular"
-                      data-testid="clipboard-remote"
-                      title={remoteClipboard}
-                    >
-                      {remoteClipboard}
-                    </span>
-                    <button type="button" className="rd-btn" onClick={handleCopyRemote}>
-                      {t(locale, 'copy')}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Quality & Display Options */}
           {activeTab === 'display' && (
-            <div className="flex flex-col" role="tabpanel">
-              {mobileLayout && hasMultipleDisplays && (
-                <label className="session-group rd-check-row" data-testid="display-switcher">
-                  <span>{t(locale, 'displays')}</span>
-                  <select
-                    className="rd-select min-w-0 max-w-[70%]"
-                    data-testid="display"
-                    value={display}
-                    onChange={e => onSwitchDisplay(Number(e.target.value))}
-                  >
-                    {displays.map(d => (
-                      <option key={d.index} value={d.index} disabled={d.online === false}>
-                        {d.name || `${t(locale, 'displayFallback')} ${d.index + 1}`} · {d.width}×{d.height}
-                        {d.online === false && ` · ${t(locale, 'offline')}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-                {sizes.length > 0 && (
-                  <label className="session-group rd-check-row">
-                    <span>{t(locale, 'remoteResolution')}</span>
-                    <AdaptiveSelect label={t(locale, 'remoteResolution')} testId="resolution-select" disabled={viewOnly}
-                      value={String(sizes.findIndex(s => s.width === stats.width && s.height === stats.height))}
-                      options={[{ value: '-1', label: `${stats.width} × ${stats.height}`, disabled: true }, ...sizes.map((s,i) => ({ value: String(i), label: `${s.width} × ${s.height}` }))]}
-                      onChange={value => { const selected = sizes[Number(value)]; if (selected) onResolution(selected.width, selected.height); }} />
-                  </label>
-                )}
-              <label className="session-group rd-check-row">
-                <span>{t(locale, 'qualityAndFps')}</span>
-                <AdaptiveSelect label={t(locale, 'qualityAndFps')} testId="quality-select" value={quality}
-                  options={[{ value: 'low', label: t(locale, 'qualityLow') }, { value: 'balanced', label: t(locale, 'qualityBalanced') }, { value: 'best', label: t(locale, 'qualityBest') }]}
-                  onChange={value => onChangeQuality(value as QualityLevel, targetFps)} />
-              </label>
-
-              <div className="session-group flex flex-col gap-1">
-                <label className="rd-check-row">
-                  <input
-                    type="checkbox"
-                    checked={followRemoteCursor}
-                    onChange={onToggleFollowCursor}
-                  />
-                  <span>{t(locale, 'followCursor')}</span>
-                </label>
-                {hasMultipleDisplays && (
-                  <label className="rd-check-row">
-                    <input type="checkbox" checked={followWindow} onChange={onToggleFollowWindow} />
-                    <span>{t(locale, 'followWindow')}</span>
-                  </label>
-                )}
-                <label className="rd-check-row">
-                  <input
-                    type="checkbox"
-                    checked={showRemoteCursor}
-                    onChange={onToggleRemoteCursor}
-                  />
-                  <span>{t(locale, 'optShowRemoteCursor')}</span>
-                </label>
-                <label className="rd-check-row">
-                  <input
-                    type="checkbox"
-                    checked={enlargeCursor}
-                    disabled={!showRemoteCursor || cursorEmbedded}
-                    onChange={onToggleEnlargeCursor}
-                  />
-                  <span>{t(locale, 'enlargeCursor')}</span>
-                </label>
-              </div>
+            <div role="tabpanel">
+              {hasMultipleDisplays && <div className="session-group session-mode-switch" role="group" aria-label={t(locale, 'displays')}>
+                {displays.map(d => <button key={d.index} type="button" aria-pressed={d.index === display} disabled={d.online === false}
+                  onClick={() => { onSwitchDisplay(d.index); onNotify(t(locale, 'requestSent')+' · '+(d.name || t(locale, 'screens')+' '+(d.index+1))); }}>
+                  <Monitor size={18} />{d.name || t(locale, 'screens')+' '+(d.index+1)}</button>)}
+              </div>}
               <div className="session-group">
-                <label className="rd-check-row">
-                  <span>{t(locale, 'targetFps')}</span>
-                  <AdaptiveSelect label={t(locale, 'targetFps')} testId="fps-select" value={String(targetFps)}
-                    options={[15,30,60].map(n => ({ value: String(n), label: `${n} FPS` }))}
-                    onChange={value => onChangeQuality(quality, Number(value), preferredCodec)} />
+                {sizes.length > 0 && <label className="session-setting-row"><Monitor /><span>{t(locale, 'remoteResolution')}</span>
+                  <AdaptiveSelect label={t(locale, 'remoteResolution')} testId="resolution-select" disabled={viewOnly} value={String(resolutionIndex)}
+                    options={[...(resolutionIndex < 0 ? [{ value: '-1', label: `${stats.width} × ${stats.height}`, disabled: true }] : []), ...sizes.map((s,i) => ({ value: String(i), label: `${s.width} × ${s.height}` }))]}
+                    onChange={value => { const size = sizes[Number(value)]; if (size) { onResolution(size.width, size.height); onNotify(t(locale, 'requestSent')+' · '+size.width+' × '+size.height); } }} />
+                </label>}
+                <label className="session-setting-row"><Sliders /><span>{t(locale, 'qualityAndFps')}</span>
+                  <AdaptiveSelect label={t(locale, 'qualityAndFps')} testId="quality-select" value={quality}
+                    options={[{ value: 'low', label: t(locale, 'qualityLow') }, { value: 'balanced', label: t(locale, 'qualityBalanced') }, { value: 'best', label: t(locale, 'qualityBest') }]}
+                    onChange={value => { onChangeQuality(value as QualityLevel, targetFps); onNotify(t(locale, 'requestSent')+' · '+t(locale, value === 'low' ? 'qualityLow' : value === 'best' ? 'qualityBest' : 'qualityBalanced')); }} />
                 </label>
-                <div className="text-xs font-semibold text-[var(--ink-soft)] my-2">
-                  {t(locale, 'sessionCodecLabel')}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {(
-                    [
-                      { value: 'auto', label: t(locale, 'sessionCodecAuto') },
-                      { value: 'h264', label: 'H.264' },
-                      { value: 'vp8', label: 'VP8' },
-                      { value: 'vp9', label: 'VP9' },
-                      { value: 'av1', label: 'AV1' },
-                    ] as const
-                  ).map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      className={`rd-btn${preferredCodec === c.value ? ' active' : ''}`}
-                      style={{ minHeight: 34, padding: '4px 10px', fontSize: 12 }}
-                      data-testid={`session-codec-${c.value}`}
-                      onClick={() => onChangeQuality(quality, targetFps, c.value)}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+                <label className="session-setting-row"><Gauge /><span>{t(locale, 'targetFps')}</span>
+                  <AdaptiveSelect label={t(locale, 'targetFps')} testId="fps-select" value={String(targetFps)}
+                    options={[...new Set([15,30,60,targetFps])].sort((a,b) => a-b).map(n => ({ value: String(n), label: `${n} FPS` }))}
+                    onChange={value => { onChangeQuality(quality, Number(value), preferredCodec); onNotify(t(locale, 'requestSent')+' · '+value+' FPS'); }} />
+                </label>
+                <label className="session-setting-row"><Film /><span>{t(locale, 'sessionCodecLabel')}</span>
+                  <AdaptiveSelect label={t(locale, 'sessionCodecLabel')} testId="codec-select" value={preferredCodec}
+                    options={['auto','h264','vp8','vp9','av1'].map(value => ({ value, label: value === 'auto' ? t(locale, 'codecAuto') : value === 'h264' ? 'H.264' : value.toUpperCase() }))}
+                    onChange={value => { onChangeQuality(quality, targetFps, value as PreferredCodec); onNotify(t(locale, 'requestSent')+' · '+(value === 'auto' ? t(locale, 'codecAuto') : value === 'h264' ? 'H.264' : value.toUpperCase())); }} />
+                </label>
               </div>
-
+              {hasMultipleDisplays && <div className="session-group">
+                <label className="session-setting-row"><Focus /><span>{t(locale, 'followWindow')}</span>
+                  <input className="ui-switch" type="checkbox" role="switch" checked={followWindow} onChange={() => { onToggleFollowWindow(); onNotify(t(locale, 'followWindow')+' · '+t(locale, followWindow ? 'optionOff' : 'optionOn')); }} />
+                </label>
+              </div>}
             </div>
           )}
 
@@ -505,19 +287,9 @@ function DesktopSessionMenu({
           )}
 
         </div>
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--rd-divider)]">
-          {peer?.restartAllowed && <button type="button" className="rd-btn" onClick={onRestart}>{t(locale, 'restartDevice')}</button>}
-          <button type="button" className="rd-btn" onClick={onOpenConnection}>
-            {t(locale, 'connection')}
-          </button>
-          <button
-            type="button"
-            className="rd-btn danger"
-            data-testid="disconnect"
-            onClick={onDisconnect}
-          >
-            <Power size={15} />
-            <span>{t(locale, 'disconnect')}</span>
+        <div className="session-menu-footer">
+          <button type="button" className="session-setting-row" onClick={onOpenConnection}>
+            <Monitor /><span>{t(locale, 'connectionManage')}</span>
           </button>
         </div>
       </div>

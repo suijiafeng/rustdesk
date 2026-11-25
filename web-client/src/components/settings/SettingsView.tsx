@@ -13,6 +13,7 @@ import { probeCodecs } from '../../lib/decoder';
 import type { DisplayPrefs, ImageQualityPreset, PreferredCodec } from '../../lib/displayPrefs';
 import { t, type Locale, type LocalePreference } from '../../lib/i18n';
 import type { ThemePreference } from '../../lib/theme';
+import { AdaptiveSelect } from '../AdaptiveSelect';
 import { IdServerModal, type ServerField } from './IdServerModal';
 
 export type SettingsSection = 'general' | 'network' | 'display' | 'about';
@@ -98,49 +99,24 @@ function GeneralSection({
   return (
     <div className="flex flex-col gap-4">
       <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'themeTitle')}</h2>
-        <div className="flex flex-col gap-1" role="radiogroup" aria-label={t(locale, 'themeTitle')}>
-          {THEME_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="radio"
-              aria-checked={theme === opt.id}
-              data-testid={`settings-theme-${opt.id}`}
-              className={`rd-radio-row${theme === opt.id ? ' active' : ''}`}
-              onClick={() => onChangeTheme(opt.id)}
-            >
-              <span className="rd-radio-dot" aria-hidden="true" />
-              <span>{t(locale, opt.key)}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'languageLabel')}</h2>
-        <select
-          className="rd-select"
-          data-testid="settings-language-select"
-          aria-label={t(locale, 'languageLabel')}
-          value={localePreference}
-          onChange={(e) => {
-            const v = e.target.value;
-            onChangeLocale(v === 'zh' || v === 'en' ? v : 'default');
-          }}
-        >
-          <option value="default">{t(locale, 'languageDefault')}</option>
-          <option value="zh">简体中文</option>
-          <option value="en">English</option>
-        </select>
+        <label className="settings-option-row"><span>{t(locale, 'themeTitle')}</span>
+          <AdaptiveSelect label={t(locale, 'themeTitle')} testId="settings-theme" value={theme}
+            options={THEME_OPTIONS.map(opt => ({ value: opt.id, label: t(locale, opt.key) }))}
+            onChange={value => onChangeTheme(value as ThemePreference)} />
+        </label>
+        <label className="settings-option-row"><span>{t(locale, 'languageLabel')}</span>
+          <AdaptiveSelect label={t(locale, 'languageLabel')} testId="settings-language-select" value={localePreference}
+            options={[{ value: 'default', label: t(locale, 'languageDefault') }, { value: 'zh', label: '简体中文' }, { value: 'en', label: 'English' }]}
+            onChange={value => onChangeLocale(value === 'zh' || value === 'en' ? value : 'default')} />
+        </label>
       </section>
 
       <section className="rd-settings-card">
         <h2 className="rd-settings-card-title">{t(locale, 'otherSectionTitle')}</h2>
         <div className="flex flex-col gap-1">
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-toggle-diagnostics"
               checked={diagnosticsOpen}
               onChange={onToggleDiagnostics}
@@ -148,9 +124,9 @@ function GeneralSection({
             <span>{t(locale, 'diagnosticsOverlayLabel')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-toggle-touch-mode"
               checked={touchMode}
               onChange={onToggleTouchMode}
@@ -203,25 +179,16 @@ function NetworkSection({
 
         <div className="my-2.5 h-px bg-[var(--rd-divider)]" />
 
-        <div className="flex items-center justify-between gap-3 py-1 px-2">
+        <label className="settings-option-row">
           <div className="flex items-center gap-2.5 min-w-0">
             <Network size={17} className="text-[var(--accent)] shrink-0" />
             <span className="text-sm font-medium text-[var(--ink)]">
               {t(locale, 'enableDirectIpLabel')}
             </span>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={directIpEnabled}
-            aria-label={t(locale, 'enableDirectIpLabel')}
-            data-testid="settings-toggle-direct-ip"
-            className={`rd-switch${directIpEnabled ? ' on' : ''}`}
-            onClick={onToggleDirectIp}
-          >
-            <span className="rd-switch-thumb" />
-          </button>
-        </div>
+          <input type="checkbox" role="switch" className="ui-switch" checked={directIpEnabled}
+            data-testid="settings-toggle-direct-ip" onChange={onToggleDirectIp} />
+        </label>
       </section>
     </div>
   );
@@ -243,92 +210,21 @@ function DisplaySection({
   return (
     <div className="flex flex-col gap-4">
       <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'defaultViewStyle')}</h2>
-        <div
-          className="flex flex-col gap-1"
-          role="radiogroup"
-          aria-label={t(locale, 'defaultViewStyle')}
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={displayPrefs.viewStyle === 'original'}
-            className={`rd-radio-row${displayPrefs.viewStyle === 'original' ? ' active' : ''}`}
-            data-testid="settings-view-original"
-            onClick={() => onUpdateDisplayPrefs({ viewStyle: 'original' })}
-          >
-            <span className="rd-radio-dot" aria-hidden="true" />
-            <span>{t(locale, 'viewStyleOriginal')}</span>
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={displayPrefs.viewStyle === 'fit'}
-            className={`rd-radio-row${displayPrefs.viewStyle === 'fit' ? ' active' : ''}`}
-            data-testid="settings-view-fit"
-            onClick={() => onUpdateDisplayPrefs({ viewStyle: 'fit' })}
-          >
-            <span className="rd-radio-dot" aria-hidden="true" />
-            <span>{t(locale, 'viewStyleFit')}</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'defaultScrollStyle')}</h2>
-        <div
-          className="flex flex-col gap-1"
-          role="radiogroup"
-          aria-label={t(locale, 'defaultScrollStyle')}
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={displayPrefs.scrollStyle === 'auto'}
-            className={`rd-radio-row${displayPrefs.scrollStyle === 'auto' ? ' active' : ''}`}
-            data-testid="settings-scroll-auto"
-            onClick={() => onUpdateDisplayPrefs({ scrollStyle: 'auto' })}
-          >
-            <span className="rd-radio-dot" aria-hidden="true" />
-            <span>{t(locale, 'scrollStyleAuto')}</span>
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={displayPrefs.scrollStyle === 'scrollbar'}
-            className={`rd-radio-row${displayPrefs.scrollStyle === 'scrollbar' ? ' active' : ''}`}
-            data-testid="settings-scroll-scrollbar"
-            onClick={() => onUpdateDisplayPrefs({ scrollStyle: 'scrollbar' })}
-          >
-            <span className="rd-radio-dot" aria-hidden="true" />
-            <span>{t(locale, 'scrollStyleBar')}</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'defaultImageQuality')}</h2>
-        <div
-          className="flex flex-col gap-1"
-          role="radiogroup"
-          aria-label={t(locale, 'defaultImageQuality')}
-        >
-          {QUALITY_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="radio"
-              aria-checked={displayPrefs.qualityPreset === opt.id}
-              className={`rd-radio-row${displayPrefs.qualityPreset === opt.id ? ' active' : ''}`}
-              data-testid={`settings-quality-${opt.id}`}
-              onClick={() => onUpdateDisplayPrefs({ qualityPreset: opt.id })}
-            >
-              <span className="rd-radio-dot" aria-hidden="true" />
-              <span>{t(locale, opt.key)}</span>
-            </button>
-          ))}
-        </div>
-
+        <label className="settings-option-row"><span>{t(locale, 'defaultViewStyle')}</span>
+          <AdaptiveSelect label={t(locale, 'defaultViewStyle')} testId="settings-view" value={displayPrefs.viewStyle}
+            options={[{ value: 'original', label: t(locale, 'viewStyleOriginal') }, { value: 'fit', label: t(locale, 'viewStyleFit') }]}
+            onChange={value => onUpdateDisplayPrefs({ viewStyle: value as DisplayPrefs['viewStyle'] })} />
+        </label>
+        <label className="settings-option-row"><span>{t(locale, 'defaultScrollStyle')}</span>
+          <AdaptiveSelect label={t(locale, 'defaultScrollStyle')} testId="settings-scroll" value={displayPrefs.scrollStyle}
+            options={[{ value: 'auto', label: t(locale, 'scrollStyleAuto') }, { value: 'scrollbar', label: t(locale, 'scrollStyleBar') }]}
+            onChange={value => onUpdateDisplayPrefs({ scrollStyle: value as DisplayPrefs['scrollStyle'] })} />
+        </label>
+        <label className="settings-option-row"><span>{t(locale, 'defaultImageQuality')}</span>
+          <AdaptiveSelect label={t(locale, 'defaultImageQuality')} testId="settings-quality" value={displayPrefs.qualityPreset}
+            options={QUALITY_OPTIONS.map(opt => ({ value: opt.id, label: t(locale, opt.key) }))}
+            onChange={value => onUpdateDisplayPrefs({ qualityPreset: value as ImageQualityPreset })} />
+        </label>
         {displayPrefs.qualityPreset === 'custom' && (
           <div className="rd-slider-group" data-testid="settings-custom-quality-controls">
             <label className="rd-slider-row">
@@ -367,35 +263,19 @@ function DisplaySection({
       </section>
 
       <section className="rd-settings-card">
-        <h2 className="rd-settings-card-title">{t(locale, 'defaultCodec')}</h2>
-        <div
-          className="flex flex-col gap-1"
-          role="radiogroup"
-          aria-label={t(locale, 'defaultCodec')}
-        >
-          {CODEC_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="radio"
-              aria-checked={displayPrefs.codec === opt.id}
-              className={`rd-radio-row${displayPrefs.codec === opt.id ? ' active' : ''}`}
-              data-testid={`settings-codec-${opt.id}`}
-              onClick={() => onUpdateDisplayPrefs({ codec: opt.id })}
-            >
-              <span className="rd-radio-dot" aria-hidden="true" />
-              <span>{opt.label ?? t(locale, 'codecAuto')}</span>
-            </button>
-          ))}
-        </div>
+        <label className="settings-option-row"><span>{t(locale, 'defaultCodec')}</span>
+          <AdaptiveSelect label={t(locale, 'defaultCodec')} testId="settings-codec" value={displayPrefs.codec}
+            options={CODEC_OPTIONS.map(opt => ({ value: opt.id, label: opt.label ?? t(locale, 'codecAuto') }))}
+            onChange={value => onUpdateDisplayPrefs({ codec: value as PreferredCodec })} />
+        </label>
       </section>
 
       <section className="rd-settings-card">
         <h2 className="rd-settings-card-title">{t(locale, 'otherDefaultOptions')}</h2>
         <div className="flex flex-col gap-0.5">
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-view-only"
               checked={displayPrefs.viewOnly}
               onChange={(e) => onUpdateDisplayPrefs({ viewOnly: e.target.checked })}
@@ -403,9 +283,9 @@ function DisplaySection({
             <span>{t(locale, 'optViewOnly')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-remote-cursor"
               checked={displayPrefs.showRemoteCursor}
               onChange={(e) => onUpdateDisplayPrefs({ showRemoteCursor: e.target.checked })}
@@ -413,9 +293,9 @@ function DisplaySection({
             <span>{t(locale, 'optShowRemoteCursor')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-quality-monitor"
               checked={diagnosticsOpen}
               onChange={onToggleDiagnostics}
@@ -423,9 +303,9 @@ function DisplaySection({
             <span>{t(locale, 'optShowQualityMonitor')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-disable-clipboard"
               checked={displayPrefs.disableClipboard}
               onChange={(e) => onUpdateDisplayPrefs({ disableClipboard: e.target.checked })}
@@ -433,9 +313,9 @@ function DisplaySection({
             <span>{t(locale, 'optDisableClipboard')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-lock-after-end"
               checked={displayPrefs.lockAfterSessionEnd}
               onChange={(e) => onUpdateDisplayPrefs({ lockAfterSessionEnd: e.target.checked })}
@@ -443,9 +323,9 @@ function DisplaySection({
             <span>{t(locale, 'optLockAfterSessionEnd')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-reverse-wheel"
               checked={displayPrefs.reverseMouseWheel}
               onChange={(e) => onUpdateDisplayPrefs({ reverseMouseWheel: e.target.checked })}
@@ -453,9 +333,9 @@ function DisplaySection({
             <span>{t(locale, 'optReverseMouseWheel')}</span>
           </label>
 
-          <label className="rd-check-row">
+          <label className="settings-option-row">
             <input
-              type="checkbox"
+              type="checkbox" role="switch" className="ui-switch"
               data-testid="settings-opt-swap-buttons"
               checked={displayPrefs.swapMouseButtons}
               onChange={(e) => onUpdateDisplayPrefs({ swapMouseButtons: e.target.checked })}
@@ -601,7 +481,7 @@ export function SettingsView(props: SettingsViewProps) {
         </nav>
       </aside>
 
-      <main className="rd-settings-main">
+      <main className="rd-settings-main" key={section}>
         <div className="rd-settings-content-inner">
           {section === 'general' && (
             <GeneralSection

@@ -1572,7 +1572,6 @@ export default function App() {
 
   const requestRestart = () => {
     if (restartState || !peer?.restartAllowed || wsRef.current?.readyState !== WebSocket.OPEN) return;
-    if (!window.confirm(t(locale, 'confirmRestart'))) return;
     restartDeadline.current = Date.now() + 180000;
     setRestartState('requested');
     setMenuOpen(false);
@@ -1846,14 +1845,14 @@ export default function App() {
       if (!(target instanceof Element)) return false;
       return Boolean(
         target.closest('[data-testid="connection-panel"]') ||
-          target.closest('[data-adaptive-select]') ||
+          target.closest('[data-adaptive-select], [data-session-confirm]') ||
           target.closest('[data-testid="session-menu"]') ||
           target.closest('[data-testid="softbar"]'),
       );
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof Element && e.target.closest('[data-adaptive-select]')) return;
+      if (e.target instanceof Element && e.target.closest('[data-adaptive-select], [data-session-confirm]')) return;
       if (chromeRef.current.menu || chromeRef.current.dialog) {
         if (e.key === 'Escape' && phaseRef.current === 'live') {
           e.preventDefault();
@@ -2856,7 +2855,6 @@ export default function App() {
               setPan({ panX: 0, panY: 0 });
             }
           }}
-          onRefresh={() => send({ type: 'refresh' })}
           onToggleKeyboard={toggleSoftKeyboard}
           onCtrlAltDel={() => handleQuickKey('Ctrl+Alt+Del')}
           onOpenMenu={() => setMenuOpen(true)}
@@ -2982,26 +2980,18 @@ export default function App() {
           mobilePanel={mobilePanel}
           locale={locale}
           audioEnabled={audioEnabled}
-          audioIssue={audioIssue ? t(locale, audioIssue) : null}
           onToggleAudio={toggleAudio}
           mobileLayout={isTouchLayout}
-          cursorEmbedded={cursorEmbedded}
           followWindow={displayPrefs.followWindow}
           onToggleFollowWindow={() => handleUpdateDisplayPrefs({ followWindow: !displayPrefs.followWindow })}
-          enlargeCursor={displayPrefs.enlargeCursor}
-          onToggleEnlargeCursor={() => handleUpdateDisplayPrefs({ enlargeCursor: !displayPrefs.enlargeCursor })}
           phase={phase}
           peer={peer}
           decoderError={decoderError}
           display={display}
           touchMode={touchMode}
-          rightArmed={rightArmed}
           viewOnly={displayPrefs.viewOnly}
-          followRemoteCursor={displayPrefs.followRemoteCursor}
-          onToggleFollowCursor={() => handleUpdateDisplayPrefs({ followRemoteCursor: !displayPrefs.followRemoteCursor })}
           sizes={resolutionOptions?.display === display ? resolutionOptions.sizes : []}
           onResolution={(width, height) => send({ type: 'resolution', display, width, height })}
-          showRemoteCursor={displayPrefs.showRemoteCursor}
           diagnosticsOpen={diagnosticsOpen}
           stats={stats}
           rtt={rtt}
@@ -3016,7 +3006,6 @@ export default function App() {
             showSessionTip(t(locale, 'privacyWaiting'));
             send({ type: 'privacy', enabled: !privacyEnabled });
           }}
-          remoteClipboard={remoteClipboard}
           onClose={closeChrome}
           onOpenConnection={() => {
             setMenuOpen(false);
@@ -3027,23 +3016,12 @@ export default function App() {
             setDiagnosticsOpen(true);
             setMenuOpen(false);
           }}
-          onToggleViewOnly={() =>
-            handleUpdateDisplayPrefs({ viewOnly: !displayPrefs.viewOnly })
-          }
-          onToggleRemoteCursor={() =>
-            handleUpdateDisplayPrefs({ showRemoteCursor: !displayPrefs.showRemoteCursor })
-          }
           onToggleTouchMode={handleToggleTouchMode}
           onSwitchDisplay={(idx) => {
             setDisplay(idx);
             send({ type: 'switchDisplay', display: idx });
           }}
-          onRefresh={() => send({ type: 'refresh' })}
           onQuickKey={handleQuickKey}
-          onRightClick={() => {
-            handleMobileRightClick();
-            setMenuOpen(false);
-          }}
           onChangeQuality={(q, fps, nextCodec) => {
             setQuality(q);
             setTargetFps(fps);
@@ -3056,11 +3034,6 @@ export default function App() {
               });
             }
             send({ type: 'quality', quality: q, fps, codec: activeCodec });
-          }}
-          onSendClipboard={(text) => {
-            if (!displayPrefsRef.current.disableClipboard) {
-              send({ type: 'clipboard', text });
-            }
           }}
         />
       )}

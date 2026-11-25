@@ -8,7 +8,6 @@ import {
   Pin,
   PinOff,
   Power,
-  RefreshCw,
   Scan,
   ShieldAlert,
   SlidersHorizontal,
@@ -34,7 +33,6 @@ interface SessionHandleProps {
   onTogglePinned: () => void;
   onSwitchDisplay: (index: number) => void;
   onToggleViewMode: () => void;
-  onRefresh: () => void;
   onToggleKeyboard: () => void;
   onCtrlAltDel: () => void;
   onOpenMenu: () => void;
@@ -57,7 +55,6 @@ export function SessionHandle({
   onTogglePinned,
   onSwitchDisplay,
   onToggleViewMode,
-  onRefresh,
   onToggleKeyboard,
   onCtrlAltDel,
   onOpenMenu,
@@ -206,18 +203,6 @@ export function SessionHandle({
         onClick={onToggleViewMode}
       >
         <Scan size={15} />
-      </button>
-
-      <button
-        type="button"
-        className="rd-toolbar-btn"
-        data-testid="toolbar-refresh"
-        aria-label={t(locale, 'refresh')}
-        data-tooltip={t(locale, 'refresh')}
-        data-tooltip-pos="bottom"
-        onClick={onRefresh}
-      >
-        <RefreshCw size={15} />
       </button>
 
       <button

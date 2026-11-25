@@ -11,9 +11,10 @@ interface Props {
   onChange: (value: string) => void;
   disabled?: boolean;
   testId?: string;
+  tone?: 'remote';
 }
 
-export function AdaptiveSelect({ label, value, options, onChange, disabled, testId }: Props) {
+export function AdaptiveSelect({ label, value, options, onChange, disabled, testId, tone }: Props) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -96,7 +97,7 @@ export function AdaptiveSelect({ label, value, options, onChange, disabled, test
 
   return <>
     <button ref={trigger} type="button" className="adaptive-select-trigger" data-adaptive-select
-      data-testid={testId} aria-label={label} aria-haspopup="listbox" aria-expanded={open && !disabled}
+      data-tone={tone} data-testid={testId} aria-label={label} aria-haspopup="listbox" aria-expanded={open && !disabled}
       aria-controls={open && !disabled ? id : undefined} disabled={disabled}
       onClick={event => { event.preventDefault(); open ? close() : show(); }}
       onKeyDown={event => {
@@ -108,7 +109,7 @@ export function AdaptiveSelect({ label, value, options, onChange, disabled, test
       <div className="adaptive-select-layer" data-adaptive-select
         onPointerDown={event => { event.stopPropagation(); if (event.target === event.currentTarget) { event.preventDefault(); close(); } }}
         onClick={event => event.stopPropagation()}>
-        <div ref={menu} id={id} className="adaptive-select-menu" role="listbox" aria-label={label}
+        <div ref={menu} id={id} className="adaptive-select-menu" data-tone={tone} role="listbox" aria-label={label}
           aria-activedescendant={`${id}-${active}`} tabIndex={-1} data-side={position?.side}
           style={position ? { left: position.left, top: position.top, width: position.width, maxHeight: position.maxHeight } : { visibility: 'hidden', width: 180 }}
           onKeyDown={event => {

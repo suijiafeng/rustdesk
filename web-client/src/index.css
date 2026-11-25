@@ -581,7 +581,7 @@ button:focus-visible {
 
 .rd-session-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border-bottom: 1px solid var(--rd-divider);
 }
 
@@ -1980,3 +1980,75 @@ button:focus-visible {
 }
 .diag-values dt { color: #bcc6d0; }
 .diag-values dd { margin: 0; text-align: end; }
+
+/* Consistent controls across settings and session menus. */
+:root { --select-surface:var(--surface); --select-ink:var(--ink); --select-line:var(--line); --select-accent:#0b6bcb; --select-hover:var(--rd-hover-bg); }
+:root[data-theme="dark"] { --select-accent:#8bcaff; }
+[data-tone="remote"] { --select-surface:var(--remote-toolbar-surface); --select-ink:#f3f5f8; --select-line:#40454c; --select-accent:#8bcaff; --select-hover:#ffffff0a; }
+.adaptive-select-trigger[aria-expanded=true] { color:var(--select-accent); }
+.adaptive-select-menu { background:var(--select-surface); color:var(--select-ink); border-color:var(--select-line); }
+.adaptive-select-menu [role=option].active { background:var(--select-hover); }
+.adaptive-select-menu [aria-selected=true] { color:var(--select-accent); }
+.session-setting-row,.settings-option-row {
+  display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:6px 0;
+  color:var(--ink); background:transparent; border:0; font:inherit; font-size:15px; text-align:start;
+}
+.session-setting-row>span,.settings-option-row>span { flex:1; min-width:0; }
+.session-setting-row>svg { width:18px; height:18px; flex-shrink:0; color:var(--ink-soft); }
+.session-setting-row.destructive,.session-setting-row.destructive svg { color:var(--bad); }
+.session-setting-row+ .session-setting-row,.settings-option-row+ .settings-option-row { border-top:1px solid var(--rd-divider); }
+.settings-option-row>.ui-switch { order:2; margin-inline-start:auto; }
+.session-setting-row:has(.ui-switch),.settings-option-row:has(.ui-switch) { cursor:pointer; }
+input.ui-switch, .tool-row input.ui-switch {
+  appearance:none; flex:0 0 36px; width:36px; height:22px; margin:0; padding:0;
+  border:0; border-radius:12px; background:var(--rd-switch-off); position:relative; cursor:pointer;
+}
+input.ui-switch::before,.tool-row input.ui-switch::before { content:''; position:absolute; width:16px; height:16px; top:3px; left:3px; border-radius:50%; background:#fff; }
+input.ui-switch:checked,.tool-row input.ui-switch:checked { background:#0b6bcb; }
+input.ui-switch:checked::before,.tool-row input.ui-switch:checked::before { left:17px; }
+input.ui-switch:disabled { cursor:default; opacity:.5; }
+.remote-menu-panel { --rd-switch-off:#535962; scrollbar-width:thin; scrollbar-color:#697483 transparent; }
+.session-menu-body .session-group { padding-block:8px; }
+.session-mode-switch { display:flex; flex-wrap:wrap; gap:8px; }
+.session-mode-switch button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:6px 10px; border:0; background:transparent; color:var(--ink-soft); font:inherit; }
+.session-mode-switch button[aria-pressed=true] { color:var(--select-accent); box-shadow:inset 0 -2px currentColor; }
+.session-mode-switch button:disabled { opacity:.5; }
+.rd-toolbar-monitor.active { background:transparent; border-color:transparent; color:var(--select-accent); box-shadow:inset 0 -2px currentColor; }
+.session-menu-footer { border-top:1px solid var(--rd-divider); }
+.session-menu-footer .session-setting-row { color:var(--ink-soft); font-size:14px; }
+.tool-group+ .tool-group { border-top:1px solid #40454c; padding-top:8px; margin-top:4px; }
+.tool-options button { background:transparent; min-height:44px; }
+.tool-options button[aria-pressed=true] { background:transparent; color:#8bcaff; box-shadow:inset 0 -2px currentColor; }
+.tool-options button[aria-pressed=true] svg { color:inherit; }
+.remote-menu-panel dl>div { padding:8px 0; }
+.remote-menu-panel dl>div+div { border-top:1px solid #393d44; }
+.remote-menu-panel dd { margin:3px 0 0; }
+.remote-menu-panel h2 { font-size:15px; }
+.soft-key-strip { scrollbar-width:thin; scrollbar-color:#697483 transparent; padding-bottom:3px; }
+.soft-key-strip::-webkit-scrollbar { display:block; height:3px; }
+.soft-key-strip::-webkit-scrollbar-thumb { background:#697483; border-radius:3px; }
+.rd-settings-card { background:transparent; border:0; border-radius:0; padding:0 0 16px; border-bottom:1px solid var(--rd-divider); box-shadow:none; }
+.rd-settings-card:last-child { border-bottom:0; }
+.rd-settings-card-title { font-size:14px; color:var(--ink-soft); margin-bottom:6px; }
+.rd-settings-main { background:var(--surface); }
+.rd-network-action-row { padding-inline:0; }
+@media (max-width:768px) {
+  .rd-settings-desktop { flex-direction:column; }
+  .rd-settings-sidebar { width:100%; height:auto; flex-shrink:0; overflow:visible; border-right:0; border-bottom:1px solid var(--rd-divider); }
+  .rd-settings-sidebar-header { min-height:48px; padding-top:env(safe-area-inset-top,0px); }
+  .rd-settings-sidebar nav { flex-direction:row; padding:0 8px; }
+  .rd-settings-sidebar .rd-sidebar-item { flex:1; min-width:0; justify-content:center; padding:0 6px; gap:6px; min-height:44px; border-radius:0; }
+  .rd-settings-sidebar .rd-sidebar-item.active { background:transparent; color:var(--select-accent); box-shadow:inset 0 -2px currentColor; }
+  .rd-sidebar-item.active::before { display:none; }
+  .rd-settings-main { padding:12px max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+  .rd-settings-card { padding:0 0 12px; }
+  .rd-settings-content-inner { max-width:none; }
+}
+.session-confirm { width:min(380px,calc(100% - 32px)); max-height:calc(100dvh - 32px); padding:0; margin:auto; border:1px solid var(--rd-card-border); border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:0 16px 40px #0005; }
+.session-confirm::backdrop { background:#10182870; }
+.session-confirm-content { padding:18px; }
+.session-confirm header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.session-confirm h2 { font-size:16px; font-weight:600; margin:0; }
+.session-confirm p { font-size:14px; line-height:1.6; margin:12px 0 20px; color:var(--ink-soft); }
+.session-confirm footer { display:flex; justify-content:flex-end; gap:8px; }
+.dialog-close { display:inline-flex; justify-content:center; align-items:center; width:36px; height:36px; background:transparent; border:0; color:var(--ink-soft); border-radius:6px; }
