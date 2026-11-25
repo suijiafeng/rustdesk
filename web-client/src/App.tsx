@@ -54,6 +54,7 @@ import {
 } from './lib/diagnostics';
 import {
   accumulateWheelTicks,
+  consumeThreeFingerScroll,
   createTouchGestureState,
   gestureLongPressTimeout,
   gesturePointerDown,
@@ -438,6 +439,7 @@ export default function App() {
       Math.max(...widths.slice(top, top + cap)) >= width * 0.8 &&
       Math.max(...widths.slice(bottom - cap + 1, bottom + 1)) >= width * 0.8;
   }, [cursorShape, cursorEmbedded, displayPrefs.autoKeyboard]);
+  const [visibleViewport, setVisibleViewport] = useState<{ width: number; height: number; left: number; top: number } | null>(null);
   const [pageZoomed, setPageZoomed] = useState(false);
   const [qualityMonitor, setQualityMonitor] = useState(false);
   const [restartState, setRestartState] = useState<'requested' | 'waiting' | null>(null);
@@ -491,6 +493,7 @@ export default function App() {
   // Mouse & touch gesture refs (unified deterministic TouchGestureState FSM)
   const cursorRef = useRef({ x: 640, y: 360 });
   const touchGestureRef = useRef<TouchGestureState>(createTouchGestureState());
+  const nativeScrollRef = useRef<{ y: number; remainder: number; count: number; x: number; anchorY: number } | null>(null);
   const touchFallbackPinchRef = useRef<{ midX: number; midY: number; dist: number } | null>(null);
   const nativeTouchInfoRef = useRef<{ count: number; updatedAt: number }>({ count: 0, updatedAt: 0 });
   const zeroTouchTimerRef = useRef<number | null>(null);
@@ -864,12 +867,13 @@ export default function App() {
     let prevZoomed = false;
     let prevInset = -1;
     const syncViewport = () => {
-      const inset = Math.round(keyboardInset(window.innerHeight, vv.height, vv.offsetTop));
+      const zoomed = isPageZoomed(vv.scale);
+      setVisibleViewport(zoomed ? { width: vv.width, height: vv.height, left: vv.offsetLeft, top: vv.offsetTop } : null);
+      const inset = zoomed && phase === 'live' ? 0 : Math.round(keyboardInset(window.innerHeight, vv.height, vv.offsetTop));
       if (inset !== prevInset) {
         prevInset = inset;
         document.documentElement.style.setProperty('--kb', `${inset}px`);
       }
-      const zoomed = isPageZoomed(vv.scale);
       if (zoomed !== prevZoomed) {
         setPageZoomed(zoomed);
         if (zoomed) {
@@ -887,7 +891,7 @@ export default function App() {
       vv.removeEventListener('scroll', syncViewport);
       document.documentElement.style.setProperty('--kb', '0px');
     };
-  }, [resetPageZoom]);
+  }, [resetPageZoom, phase]);
 
   const focusDesktopCapture = useCallback(() => {
     if (window.matchMedia('(pointer: coarse)').matches) return;
@@ -2051,6 +2055,7 @@ export default function App() {
       window.clearTimeout(zeroTouchTimerRef.current);
       zeroTouchTimerRef.current = null;
     }
+    nativeScrollRef.current = null;
     touchFallbackPinchRef.current = null;
     wheelAccumRef.current = { x: 0, y: 0 };
 
@@ -2102,6 +2107,7 @@ export default function App() {
       return;
     }
 
+    if (isTouch && nativeScrollRef.current) return;
     const local = stageLocalPoint(e.clientX, e.clientY);
 
     if (!isTouch) {
@@ -2203,6 +2209,7 @@ export default function App() {
       return;
     }
 
+    if (isTouch && nativeScrollRef.current) return;
     const local = stageLocalPoint(e.clientX, e.clientY);
 
     if (!isTouch) {
@@ -2256,6 +2263,7 @@ export default function App() {
       return;
     }
 
+    if (isTouch && nativeScrollRef.current) return;
     const local = stageLocalPoint(e.clientX, e.clientY);
 
     if (!isTouch) {
@@ -2396,6 +2404,39 @@ export default function App() {
       };
     };
 
+    // TouchList remains authoritative when a browser omits one of the pointer events.
+    // Once three fingers take over, suppress pointer gestures until every finger lifts.
+    const handleNativeScroll = (e: TouchEvent, moving: boolean) => {
+      if (!nativeScrollRef.current && e.touches.length < 3) return false;
+      const points = Array.from(e.touches);
+      const x = points.reduce((sum, point) => sum + point.clientX, 0) / points.length;
+      const y = points.reduce((sum, point) => sum + point.clientY, 0) / points.length;
+      let scroll = nativeScrollRef.current;
+      if (!scroll) {
+        resetAllGesturesRef.current();
+        scroll = { x, anchorY: y, y, remainder: 0, count: points.length };
+        nativeScrollRef.current = scroll;
+      }
+      if (moving && points.length >= 3 && scroll.count === points.length) {
+        const { ticks, remainder } = consumeThreeFingerScroll(scroll.remainder + y - scroll.y);
+        scroll.remainder = remainder;
+        if (ticks && remoteInputRef.current && !displayPrefsRef.current.viewOnly) {
+          const local = stageLocalPoint(scroll.x, scroll.anchorY);
+          const pos = touchModeRef.current ? remoteFromLocalClamped(local.x, local.y) : cursorPoint();
+          if (pos) {
+            cancelQueuedMove();
+            send({ type: 'mouse', action: 'move', x: pos.x, y: pos.y });
+            runTouchEffectsRef.current([{ type: 'three-finger-scroll', ticks }]);
+          }
+        }
+      } else {
+        scroll.remainder = 0;
+      }
+      scroll.y = y;
+      scroll.count = points.length;
+      return true;
+    };
+
     const shouldUseTouchFallback = (touches: TouchList) =>
       touches.length === 2 && touchGestureRef.current.pointers.size < 2;
 
@@ -2407,8 +2448,10 @@ export default function App() {
         zeroTouchTimerRef.current = null;
       }
 
+      if (!remoteInputRef.current && e.touches.length > 1) e.preventDefault();
       if (shouldPreventStageTouch(remoteInputRef.current, isStageSurface(e.target))) {
         e.preventDefault();
+        if (handleNativeScroll(e, false)) return;
         touchFallbackPinchRef.current = shouldUseTouchFallback(e.touches)
           ? touchPairMetrics(e.touches)
           : null;
@@ -2418,8 +2461,10 @@ export default function App() {
     const onTouchMove = (e: TouchEvent) => {
       const now = Date.now();
       nativeTouchInfoRef.current = { count: e.touches.length, updatedAt: now };
+      if (!remoteInputRef.current && e.touches.length > 1) e.preventDefault();
       if (shouldPreventStageTouch(remoteInputRef.current, isStageSurface(e.target))) {
         e.preventDefault();
+        if (handleNativeScroll(e, true)) return;
         if (!shouldUseTouchFallback(e.touches)) {
           touchFallbackPinchRef.current = null;
           return;
@@ -2441,6 +2486,12 @@ export default function App() {
     const onTouchEndOrCancel = (e: TouchEvent) => {
       const now = Date.now();
       nativeTouchInfoRef.current = { count: e.touches.length, updatedAt: now };
+      if (nativeScrollRef.current) {
+        e.preventDefault();
+        if (e.touches.length === 0) resetAllGesturesRef.current();
+        else handleNativeScroll(e, false);
+        return;
+      }
       if (e.touches.length < 2) {
         touchFallbackPinchRef.current = null;
       }
@@ -2584,6 +2635,10 @@ export default function App() {
     <section
       ref={stageRef}
       className={`stage${hand ? ' hand' : ''}`}
+      style={phase === 'live' && visibleViewport ? {
+        position: 'fixed', inset: 'auto', left: visibleViewport.left, top: visibleViewport.top,
+        width: visibleViewport.width, height: visibleViewport.height,
+      } : undefined}
       data-testid="stage"
       data-remote-active={remoteInput ? 'true' : 'false'}
       data-scroll-style={displayPrefs.scrollStyle}

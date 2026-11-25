@@ -73,9 +73,6 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
         <section className="remote-menu-panel" role="dialog" aria-label={label(panelName[p.mobilePanel])} data-testid="session-menu">
           {p.mobilePanel === 'actions' && <>
             <div className="tool-group">
-              {action(LockKeyhole, 'lockScreen', () => p.onQuickKey('Lock'))}
-            </div>
-            <div className="tool-group">
               {toggle(Eye, 'optViewOnly', p.viewOnly, p.onToggleViewOnly)}
               {toggle(Volume2, 'remoteAudio', p.audioEnabled, p.onToggleAudio)}
               {p.audioIssue && <p role="alert">{p.audioIssue}</p>}
@@ -86,7 +83,11 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
               {clipNotice && <p role="status">{label(clipNotice)}</p>}
             </div>
             <div className="tool-group">{action(Activity, 'diagTitle', p.onToggleDiagnostics)}</div>
-            <div className="tool-group">{p.peer?.restartAllowed && action(RotateCcw, 'restartDevice', p.onRestart)}{action(LogOut, 'disconnectRemote', p.onDisconnect, true)}</div>
+            <div className="tool-group">
+              {p.peer?.restartAllowed && action(RotateCcw, 'restartDevice', p.onRestart)}
+              {action(LockKeyhole, 'lockScreen', () => p.onQuickKey('Lock'))}
+              {action(LogOut, 'disconnectRemote', p.onDisconnect, true)}
+            </div>
           </>}
           {p.mobilePanel === 'input' && <>
             <div className="tool-group tool-options mode-options">

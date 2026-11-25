@@ -154,6 +154,7 @@ button:focus-visible {
 }
 
 .stage {
+  touch-action: pan-x pan-y;
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1940,5 +1941,11 @@ button:focus-visible {
   .rd-password-dialog {
     max-height: 100%;
     overflow-y: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .stage :is(input, textarea, select) {
+    font-size: max(16px, 1em);
   }
 }
