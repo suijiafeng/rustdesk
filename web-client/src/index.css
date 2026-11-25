@@ -1853,6 +1853,9 @@ button:focus-visible {
 .tool-options button { display:inline-flex; align-items:center; gap:5px; color:inherit; background:#30353c; border:0; border-radius:5px; padding:8px; }
 .tool-options button[aria-pressed=true] { color:#a1d2ff; background:#224362; }
 .mode-options button { flex:1; justify-content:center; }
+.view-fit-action { min-height:44px; padding:8px 12px; background:transparent; border:0; color:inherit; font:inherit; }
+.view-fit-action[aria-pressed=true] { color:var(--accent); }
+.remote-menu-panel .view-fit-action[aria-pressed=true] { color:#8bcaff; }
 .remote-menu-panel dl { margin:0; }
 .remote-menu-panel dl>div { padding:6px 0; }
 .remote-menu-panel dd,.remote-menu-panel p { font-size:13px; color:#c2cad3; margin:3px 0 8px; }
@@ -1922,6 +1925,9 @@ button:focus-visible {
   top: calc(12px + var(--view-top));
   inset-inline: max(12px, var(--view-left)) max(12px, var(--view-right));
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   justify-content: center;
   pointer-events: none;
 }
@@ -1936,6 +1942,9 @@ button:focus-visible {
   overflow-wrap: anywhere;
   box-shadow: 0 2px 8px #0004;
 }
+
+.clipboard-tip { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+.clipboard-tip button { color: #73b7ff; background: none; border: 0; min-height: 32px; padding: 0 4px; white-space: nowrap; }
 
 .diag-header {
   display: flex;

@@ -1,4 +1,5 @@
 import { useKeyboardViewport } from './hooks/useKeyboardViewport';
+import { useClipboardSync } from './hooks/useClipboardSync';
 import { RemoteSocket } from './lib/remoteSocket';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -410,6 +411,7 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [privacyPending, locale, showSessionTip]);
   const [remoteClipboard, setRemoteClipboard] = useState('');
+  const [clipboardSync, setClipboardSync] = useState(false);
 
   // Viewport & chrome state
   const [viewMode, setViewMode] = useState<ViewMode>(() => displayPrefs.viewStyle);
@@ -600,6 +602,28 @@ export default function App() {
       sock.send(JSON.stringify(msg));
     }
   }, []);
+
+  const clipboardAllowed = phase === 'live' && peer?.clipboardAllowed !== false && !displayPrefs.disableClipboard;
+  const clipboard = useClipboardSync({
+    enabled: clipboardSync && clipboardAllowed,
+    send: text => {
+      try {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) return false;
+        wsRef.current.send(JSON.stringify({ type: 'clipboard', text }));
+        return true;
+      } catch { return false; }
+    },
+    notify: (key, error) => showSessionTip(t(locale, key), error),
+  });
+  useEffect(() => {
+    if (!clipboardAllowed) setClipboardSync(false);
+  }, [clipboardAllowed]);
+  const toggleClipboardSync = () => {
+    const enabled = !clipboardSync;
+    flushSync(() => setClipboardSync(enabled));
+    if (enabled) void clipboard.readLocal();
+    else showSessionTip(t(locale, 'clipSyncOff'));
+  };
 
   useEffect(() => {
     if (phase === 'live' && peer && peer.displays.length > 1) {
@@ -1434,6 +1458,7 @@ export default function App() {
           case 'clipboard':
             if (!displayPrefsRef.current.disableClipboard) {
               setRemoteClipboard(msg.text);
+              clipboard.receive(msg.text);
             }
             break;
 
@@ -2854,9 +2879,19 @@ export default function App() {
         />
       )}
 
-      {isTouchLayout && phase === 'live' && (
+      {phase === 'live' && (
         <div className="session-tip-region" aria-live="polite" aria-atomic="true">
           {sessionTip && <div className="session-tip" data-testid="session-tip">{sessionTip.text}</div>}
+          {clipboardSync && clipboardAllowed && clipboard.pending && (
+            <div className="session-tip clipboard-tip" data-testid="clipboard-tip"
+              onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+              <span>{t(locale, clipboard.pending === 'write' ? 'clipRemoteReady' : 'clipLocalReady')}</span>
+              <button type="button" onClick={() => { void (clipboard.pending === 'write' ? clipboard.writeRemote() : clipboard.readLocal()); }}>
+                {t(locale, clipboard.pending === 'write' ? 'copy' : 'clipSyncAction')}
+              </button>
+              <button type="button" aria-label={t(locale, 'close')} onClick={clipboard.dismiss}>×</button>
+            </div>
+          )}
         </div>
       )}
       {showMobileDock && (
@@ -2937,6 +2972,9 @@ export default function App() {
 
       {showSessionMenu && (
         <SessionMenu
+          clipboardSync={clipboardSync && clipboardAllowed}
+          clipboardAllowed={clipboardAllowed}
+          onToggleClipboardSync={toggleClipboardSync}
           onNotify={showSessionTip}
           onRestart={requestRestart}
           mobilePanel={mobilePanel}
@@ -2956,7 +2994,6 @@ export default function App() {
           display={display}
           viewMode={viewMode}
           zoomPercent={zoomPercent}
-          hand={hand}
           touchMode={touchMode}
           rightArmed={rightArmed}
           viewOnly={displayPrefs.viewOnly}
@@ -3001,16 +3038,6 @@ export default function App() {
             setZoom(1);
             setPan({ panX: 0, panY: 0 });
           }}
-          onOriginal={() => {
-            setViewMode('original');
-            setPan({
-              panX: (box.w - remoteW) / 2,
-              panY: (box.h - remoteH) / 2,
-            });
-          }}
-          onZoomOut={() => setScaleAround(viewRef.current.scale / 1.25, box.w / 2, box.h / 2)}
-          onZoomIn={() => setScaleAround(viewRef.current.scale * 1.25, box.w / 2, box.h / 2)}
-          onToggleHand={() => setHand((h) => !h)}
           onToggleTouchMode={handleToggleTouchMode}
           onSwitchDisplay={(idx) => {
             setDisplay(idx);
@@ -3045,6 +3072,7 @@ export default function App() {
 
       {softKeys && remoteInput && (
         <SoftKeyboardBar
+          onPasteText={clipboardSync && clipboardAllowed ? text => { clipboard.sendLocal(text); } : undefined}
           locale={locale}
           inputRef={softKeyboardInputRef}
           onSendText={sendText}

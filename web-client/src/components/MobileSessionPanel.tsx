@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Activity, RotateCcw, Eye, Focus, LockKeyhole, LogOut, ScanEye, Monitor, SlidersHorizontal, Volume2 } from 'lucide-react';
+import { Clipboard, Shield, Activity, RotateCcw, Eye, Focus, LockKeyhole, LogOut, ScanEye, Monitor, SlidersHorizontal, Volume2 } from 'lucide-react';
 import { t, type I18nKey } from '../lib/i18n';
 import { formatConnectionError } from '../lib/errors';
 import type { SessionMenuProps } from './SessionMenu';
@@ -53,6 +53,7 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
           {p.mobilePanel === 'actions' && <>
             <div className="tool-group">
               {toggle(Volume2, 'remoteAudio', p.audioEnabled, p.onToggleAudio)}
+              {toggle(Clipboard, 'clipSync', p.clipboardSync, p.onToggleClipboardSync, !p.clipboardAllowed)}
               {p.peer?.privacyAllowed && toggle(Shield, 'privacyMode', p.privacyEnabled, p.onTogglePrivacy, p.privacyPending || p.viewOnly)}
             </div>
             <div className="tool-group">{action(Activity, 'diagTitle', p.onToggleDiagnostics)}</div>
@@ -72,13 +73,9 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
               <button key={d.index} aria-pressed={d.index === p.display} disabled={d.online === false}
                 onClick={() => { p.onSwitchDisplay(d.index); notify(label('requestSent')+' · '+(d.name || label('screens')+' '+(d.index+1))); }}><Monitor />{d.name || label('screens')+' '+(d.index+1)}</button>)}</div>}
             <div className="tool-group">
-              <details><summary><ScanEye />{label('view')}<small>{p.viewMode === 'fit' ? label('fit') : p.zoomPercent+'%'}</small></summary>
-                <div className="tool-options">
-                  <button data-testid="view-fit" onClick={() => { p.onFit(); notify(label('fit')); }}>{label('fit')}</button><button onClick={() => { p.onOriginal(); notify('100%'); }}>100%</button>
-                  <button aria-label={label('zoomOut')} onClick={p.onZoomOut}>−</button>{p.zoomPercent}%
-                  <button aria-label={label('zoomIn')} onClick={p.onZoomIn}>＋</button>
-                  <button aria-pressed={p.hand} onClick={() => { p.onToggleHand(); notify(label(p.hand ? 'panOff' : 'panOn')); }}>{label('pan')}</button>
-                </div>
+              <details><summary><ScanEye />{label('view')}</summary>
+                <button type="button" className="view-fit-action" data-testid="view-fit" aria-pressed={p.viewMode === 'fit'}
+                  onClick={() => { p.onFit(); notify(label('fit')); }}>{label('fit')}</button>
               </details>
               {p.sizes.length > 0 && <label className="tool-row"><Monitor /><span>{label('remoteResolution')}</span>
                 <select disabled={p.viewOnly} value={p.sizes.findIndex(s => s.width === p.stats.width && s.height === p.stats.height)}

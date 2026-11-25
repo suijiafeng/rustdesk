@@ -34,6 +34,10 @@ export interface SessionStats {
 type MenuTab = 'control' | 'input' | 'display';
 
 export interface SessionMenuProps {
+  onFit: () => void;
+  clipboardSync: boolean;
+  clipboardAllowed: boolean;
+  onToggleClipboardSync: () => void;
   onNotify: (text: string, error?: boolean) => void;
   locale: Locale;
   audioEnabled: boolean;
@@ -51,7 +55,6 @@ export interface SessionMenuProps {
   display: number;
   viewMode: ViewMode;
   zoomPercent: number;
-  hand: boolean;
   touchMode: boolean;
   rightArmed: boolean;
   viewOnly: boolean;
@@ -77,11 +80,6 @@ export interface SessionMenuProps {
   onToggleDiagnostics: () => void;
   onToggleViewOnly: () => void;
   onToggleRemoteCursor: () => void;
-  onFit: () => void;
-  onOriginal: () => void;
-  onZoomOut: () => void;
-  onZoomIn: () => void;
-  onToggleHand: () => void;
   onToggleTouchMode: () => void;
   onSwitchDisplay: (index: number) => void;
   onRefresh: () => void;
@@ -97,6 +95,7 @@ export function SessionMenu(props: SessionMenuProps & { mobilePanel: MobilePanel
 }
 
 function DesktopSessionMenu({
+  clipboardSync, clipboardAllowed, onToggleClipboardSync,
   locale,
   audioEnabled,
   audioIssue,
@@ -113,7 +112,6 @@ function DesktopSessionMenu({
   display,
   viewMode,
   zoomPercent,
-  hand,
   touchMode,
   rightArmed,
   viewOnly,
@@ -134,10 +132,6 @@ function DesktopSessionMenu({
   onToggleViewOnly,
   onToggleRemoteCursor,
   onFit,
-  onOriginal,
-  onZoomOut,
-  onZoomIn,
-  onToggleHand,
   onToggleTouchMode,
   onSwitchDisplay,
   onRefresh,
@@ -272,73 +266,7 @@ function DesktopSessionMenu({
         <div className="session-menu-body" key={activeTab}>
           {activeTab === 'control' && (
             <div className="flex flex-col" role="tabpanel">
-              <div className="session-group">
-                <div className="text-xs font-semibold text-[var(--ink-soft)] mb-2">
-                  {t(locale, 'view')}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="session-view-modes">
-                  <button
-                    type="button"
-                    className={`rd-btn${viewMode === 'fit' ? ' primary' : ''}`}
-                    data-testid="view-fit"
-                    aria-pressed={viewMode === 'fit'}
-                    onClick={onFit}
-                  >
-                    {t(locale, 'fit')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`rd-btn${viewMode === 'original' && zoomPercent === 100 ? ' primary' : ''}`}
-                    data-testid="view-original"
-                    aria-pressed={viewMode === 'original' && zoomPercent === 100}
-                    onClick={onOriginal}
-                  >
-                    100%
-                  </button>
-                  </div>
-                  <div className="session-zoom-stepper">
-                  <button
-                    type="button"
-                    className="rd-btn font-mono-tabular"
-                    data-testid="zoom-out"
-                    aria-label={t(locale, 'zoomOut')}
-                    data-tooltip={t(locale, 'zoomOut')}
-                    data-tooltip-pos="top"
-                    onClick={onZoomOut}
-                  >
-                    −
-                  </button>
-                  <span
-                    className="font-mono-tabular text-xs font-medium text-[var(--ink)] min-w-[46px] text-center"
-                    data-testid="zoom"
-                  >
-                    {zoomPercent}%
-                  </span>
-                  <button
-                    type="button"
-                    className="rd-btn font-mono-tabular"
-                    data-testid="zoom-in"
-                    aria-label={t(locale, 'zoomIn')}
-                    data-tooltip={t(locale, 'zoomIn')}
-                    data-tooltip-pos="top"
-                    onClick={onZoomIn}
-                  >
-                    +
-                  </button>
-                  </div>
-                </div>
-              </div>
-
               <div className="session-group flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className={`rd-btn${hand ? ' active' : ''}`}
-                    data-testid="pan"
-                    onClick={onToggleHand}
-                  >
-                    {hand ? t(locale, 'panning') : t(locale, 'pan')}
-                  </button>
                 {mobileLayout && (
                   <button type="button" className="rd-btn" onClick={onRefresh}>
                     <RefreshCw size={14} />
@@ -424,6 +352,10 @@ function DesktopSessionMenu({
                   </span>
                   {clipNotice && <span className="text-xs text-[var(--ok)]">{clipNotice}</span>}
                 </div>
+                <label className="tool-row">
+                  <span>{t(locale, 'clipSync')}</span>
+                  <input type="checkbox" role="switch" checked={clipboardSync} disabled={!clipboardAllowed} onChange={onToggleClipboardSync} />
+                </label>
                 <form className="flex gap-2" onSubmit={handleSendClip}>
                   <input
                     type="text"
@@ -463,6 +395,12 @@ function DesktopSessionMenu({
           {/* Tab 3: Quality & Display Options */}
           {activeTab === 'display' && (
             <div className="flex flex-col" role="tabpanel">
+              <div className="session-group">
+                <div className="text-xs font-semibold text-[var(--ink-soft)] mb-2">{t(locale, 'view')}</div>
+                <button type="button" className="view-fit-action" data-testid="view-fit" aria-pressed={viewMode === 'fit'} onClick={onFit}>
+                  {t(locale, 'fit')}
+                </button>
+              </div>
               {mobileLayout && hasMultipleDisplays && (
                 <label className="session-group rd-check-row" data-testid="display-switcher">
                   <span>{t(locale, 'displays')}</span>

@@ -1,3 +1,4 @@
+import { decodeClipboard } from './clipboard.ts';
 import type { WebSocket } from 'ws';
 import { tokenMatches } from './auth.ts';
 import {
@@ -26,8 +27,6 @@ import {
 export interface GatewayConfig {
   token: string;
 }
-
-const MAX_CLIPBOARD_BYTES = 256 * 1024;
 
 function permissions(conn: ConnectedHost) {
   return {
@@ -317,23 +316,14 @@ export function serveSocket(ws: WebSocket, config: GatewayConfig): void {
           sendJson({ type: 'audioFrame', packet: Buffer.from(packet).toString('base64') });
         }
 
-        // 3. Clipboard (single or RustDesk 1.4/1.5 MultiClipboards, uncompressed UTF-8 <= 256 KiB)
-        if (conn.clipboardAllowed && msg.clipboard && !msg.clipboard.compress && msg.clipboard.content) {
-          const fmt = Number(msg.clipboard.format ?? 0);
-          if (fmt === 0) {
-            const buf = Buffer.from(msg.clipboard.content);
-            if (buf.byteLength <= MAX_CLIPBOARD_BYTES) {
-              sendJson({ type: 'clipboard', text: buf.toString('utf8') });
-            }
-          }
-        } else if (conn.clipboardAllowed && Array.isArray(msg.multi_clipboards?.clipboards)) {
-          for (const clip of msg.multi_clipboards.clipboards) {
-            if (!clip.compress && clip.content && Number(clip.format ?? 0) === 0) {
-              const buf = Buffer.from(clip.content);
-              if (buf.byteLength <= MAX_CLIPBOARD_BYTES) {
-                sendJson({ type: 'clipboard', text: buf.toString('utf8') });
-                break;
-              }
+        // 3. Clipboard (single or RustDesk 1.4/1.5 MultiClipboards, bounded UTF-8)
+        if (conn.clipboardAllowed) {
+          const clips = msg.clipboard ? [msg.clipboard] : msg.multi_clipboards?.clipboards ?? [];
+          for (const clip of clips) {
+            const text = decodeClipboard(clip);
+            if (text !== null) {
+              sendJson({ type: 'clipboard', text });
+              break;
             }
           }
         }

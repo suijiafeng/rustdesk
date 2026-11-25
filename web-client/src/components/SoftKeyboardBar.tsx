@@ -14,6 +14,7 @@ interface SoftKeyboardBarProps {
   locale: Locale;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onSendText: (text: string) => void;
+  onPasteText?: (text: string) => void;
   onSendControl: (action: 'down' | 'up', control: string) => void;
   onSendChord: (parts: SoftChordPart[]) => void;
   onHide: () => void;
@@ -44,6 +45,7 @@ export function SoftKeyboardBar({
   locale,
   inputRef,
   onSendText,
+  onPasteText,
   onSendControl,
   onSendChord,
   onHide,
@@ -284,6 +286,15 @@ export function SoftKeyboardBar({
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
         onInput={handleInput}
+        onPaste={e => {
+          if (!onPasteText) return;
+          const text = e.clipboardData.getData('text/plain');
+          if (!text) return;
+          e.preventDefault();
+          onPasteText(text);
+          onSendText(text);
+          resetLocalDraft();
+        }}
       />
     </div>
   );
