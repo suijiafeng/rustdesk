@@ -1846,12 +1846,14 @@ export default function App() {
       if (!(target instanceof Element)) return false;
       return Boolean(
         target.closest('[data-testid="connection-panel"]') ||
+          target.closest('[data-adaptive-select]') ||
           target.closest('[data-testid="session-menu"]') ||
           target.closest('[data-testid="softbar"]'),
       );
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-adaptive-select]')) return;
       if (chromeRef.current.menu || chromeRef.current.dialog) {
         if (e.key === 'Escape' && phaseRef.current === 'live') {
           e.preventDefault();
@@ -2992,8 +2994,6 @@ export default function App() {
           peer={peer}
           decoderError={decoderError}
           display={display}
-          viewMode={viewMode}
-          zoomPercent={zoomPercent}
           touchMode={touchMode}
           rightArmed={rightArmed}
           viewOnly={displayPrefs.viewOnly}
@@ -3033,11 +3033,6 @@ export default function App() {
           onToggleRemoteCursor={() =>
             handleUpdateDisplayPrefs({ showRemoteCursor: !displayPrefs.showRemoteCursor })
           }
-          onFit={() => {
-            setViewMode('fit');
-            setZoom(1);
-            setPan({ panX: 0, panY: 0 });
-          }}
           onToggleTouchMode={handleToggleTouchMode}
           onSwitchDisplay={(idx) => {
             setDisplay(idx);

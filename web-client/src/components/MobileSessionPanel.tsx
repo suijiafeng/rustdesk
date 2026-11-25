@@ -1,9 +1,11 @@
 import React from 'react';
-import { Clipboard, Shield, Activity, RotateCcw, Eye, Focus, LockKeyhole, LogOut, ScanEye, Monitor, SlidersHorizontal, Volume2 } from 'lucide-react';
+import { AdaptiveSelect } from './AdaptiveSelect';
+import { Clipboard, Shield, Activity, RotateCcw, Eye, Focus, LockKeyhole, LogOut, Monitor, SlidersHorizontal, Volume2, Gauge, Film } from 'lucide-react';
 import { t, type I18nKey } from '../lib/i18n';
 import { formatConnectionError } from '../lib/errors';
 import type { SessionMenuProps } from './SessionMenu';
 import type { PreferredCodec } from '../lib/displayPrefs';
+import type { QualityLevel } from '../lib/protocol';
 const qualityNames = { low: 'qualityLow', balanced: 'qualityBalanced', best: 'qualityBest' } as const;
 
 export type MobilePanel = 'toolbar' | 'actions' | 'display' | 'gestures';
@@ -73,29 +75,31 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
               <button key={d.index} aria-pressed={d.index === p.display} disabled={d.online === false}
                 onClick={() => { p.onSwitchDisplay(d.index); notify(label('requestSent')+' · '+(d.name || label('screens')+' '+(d.index+1))); }}><Monitor />{d.name || label('screens')+' '+(d.index+1)}</button>)}</div>}
             <div className="tool-group">
-              <details><summary><ScanEye />{label('view')}</summary>
-                <button type="button" className="view-fit-action" data-testid="view-fit" aria-pressed={p.viewMode === 'fit'}
-                  onClick={() => { p.onFit(); notify(label('fit')); }}>{label('fit')}</button>
-              </details>
               {p.sizes.length > 0 && <label className="tool-row"><Monitor /><span>{label('remoteResolution')}</span>
-                <select disabled={p.viewOnly} value={p.sizes.findIndex(s => s.width === p.stats.width && s.height === p.stats.height)}
-                  onChange={e => { const size = p.sizes[Number(e.target.value)]; if (size) { p.onResolution(size.width,size.height); notify(label('requestSent')+' · '+size.width+' × '+size.height); } }}>
-                  <option disabled value={-1}>{p.stats.width} × {p.stats.height}</option>
-                  {p.sizes.map((s,i) => <option key={i} value={i}>{s.width} × {s.height}</option>)}
-                </select></label>}
-              <details data-testid="mobile-quality">
-                <summary><SlidersHorizontal />{label('qualityAndFps')}<small>{label(qualityNames[p.quality])} · {p.targetFps} FPS</small></summary>
-                <div className="tool-options mode-options">
-                  {(['low', 'balanced', 'best'] as const).map(level =>
-                    <button key={level} aria-pressed={p.quality === level} onClick={() => { p.onChangeQuality(level, p.targetFps); notify(label('requestSent')+' · '+label(qualityNames[level])); }}>
-                      {label(qualityNames[level])}
-                    </button>)}
-                </div>
-                <label className="tool-row"><span>{label('targetFps')}</span><select value={p.targetFps} onChange={e => { p.onChangeQuality(p.quality, Number(e.target.value)); notify(label('requestSent')+' · '+e.target.value+' FPS'); }}>
-                  {[15,30,60].map(n => <option key={n}>{n}</option>)}</select></label>
-                <label className="tool-row"><span>{label('sessionCodecLabel')}</span><select value={p.preferredCodec} onChange={e => { p.onChangeQuality(p.quality,p.targetFps,e.target.value as PreferredCodec); notify(label('requestSent')+' · '+(e.target.value === 'auto' ? label('codecAuto') : e.target.value.toUpperCase())); }}>
-                  {['auto','h264','vp8','vp9','av1'].map(v => <option key={v} value={v}>{v==='auto'?label('codecAuto'):v.toUpperCase()}</option>)}</select></label>
-              </details>
+                <AdaptiveSelect label={label('remoteResolution')} testId="resolution-select" disabled={p.viewOnly}
+                  value={String(p.sizes.findIndex(s => s.width === p.stats.width && s.height === p.stats.height))}
+                  options={[{ value: '-1', label: `${p.stats.width} × ${p.stats.height}`, disabled: true }, ...p.sizes.map((s,i) => ({ value: String(i), label: `${s.width} × ${s.height}` }))]}
+                  onChange={value => { const size = p.sizes[Number(value)]; if (size) { p.onResolution(size.width,size.height); notify(label('requestSent')+' · '+size.width+' × '+size.height); } }} />
+                </label>}
+              <div data-testid="mobile-quality">
+                <label className="tool-row"><SlidersHorizontal /><span>{label('qualityAndFps')}</span>
+                  <AdaptiveSelect label={label('qualityAndFps')} testId="quality-select" value={p.quality}
+                    options={(['low', 'balanced', 'best'] as const).map(level => ({ value: level, label: label(qualityNames[level]) }))}
+                    onChange={value => {
+                    const level = value as QualityLevel;
+                    p.onChangeQuality(level, p.targetFps);
+                    notify(label('requestSent')+' · '+label(qualityNames[level]));
+                  }} />
+                </label>
+                <label className="tool-row"><Gauge /><span>{label('targetFps')}</span>
+                  <AdaptiveSelect label={label('targetFps')} testId="fps-select" value={String(p.targetFps)}
+                    options={[15,30,60].map(n => ({ value: String(n), label: `${n} FPS` }))}
+                    onChange={value => { p.onChangeQuality(p.quality, Number(value)); notify(label('requestSent')+' · '+value+' FPS'); }} /></label>
+                <label className="tool-row"><Film /><span>{label('sessionCodecLabel')}</span>
+                  <AdaptiveSelect label={label('sessionCodecLabel')} testId="codec-select" value={p.preferredCodec}
+                    options={['auto','h264','vp8','vp9','av1'].map(value => ({ value, label: value==='auto'?label('codecAuto'):value.toUpperCase() }))}
+                    onChange={value => { p.onChangeQuality(p.quality,p.targetFps,value as PreferredCodec); notify(label('requestSent')+' · '+(value === 'auto' ? label('codecAuto') : value.toUpperCase())); }} /></label>
+              </div>
             </div>
             {monitors.length > 1 && <div className="tool-group">
               {toggle(Focus,'followWindow',p.followWindow,() => { p.onToggleFollowWindow(); notify(label('followWindow')+' · '+label(p.followWindow ? 'optionOff' : 'optionOn')); })}

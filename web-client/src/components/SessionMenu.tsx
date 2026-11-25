@@ -1,3 +1,4 @@
+import { AdaptiveSelect } from './AdaptiveSelect';
 import { MobileSessionPanel, type MobilePanel } from './MobileSessionPanel';
 import React, { useState } from 'react';
 import {
@@ -11,7 +12,6 @@ import {
 } from 'lucide-react';
 import { formatConnectionError } from '../lib/errors';
 import { statusLabel, t, type Locale } from '../lib/i18n';
-import type { ViewMode } from '../lib/mapping';
 import { type PeerMessage, type QualityLevel } from '../lib/protocol';
 import type { ConnectionPhase } from './RustDeskShell';
 
@@ -34,7 +34,6 @@ export interface SessionStats {
 type MenuTab = 'control' | 'input' | 'display';
 
 export interface SessionMenuProps {
-  onFit: () => void;
   clipboardSync: boolean;
   clipboardAllowed: boolean;
   onToggleClipboardSync: () => void;
@@ -53,8 +52,6 @@ export interface SessionMenuProps {
   peer: PeerMessage | null;
   decoderError: string;
   display: number;
-  viewMode: ViewMode;
-  zoomPercent: number;
   touchMode: boolean;
   rightArmed: boolean;
   viewOnly: boolean;
@@ -110,8 +107,6 @@ function DesktopSessionMenu({
   peer,
   decoderError,
   display,
-  viewMode,
-  zoomPercent,
   touchMode,
   rightArmed,
   viewOnly,
@@ -131,7 +126,6 @@ function DesktopSessionMenu({
   onToggleDiagnostics,
   onToggleViewOnly,
   onToggleRemoteCursor,
-  onFit,
   onToggleTouchMode,
   onSwitchDisplay,
   onRefresh,
@@ -395,12 +389,6 @@ function DesktopSessionMenu({
           {/* Tab 3: Quality & Display Options */}
           {activeTab === 'display' && (
             <div className="flex flex-col" role="tabpanel">
-              <div className="session-group">
-                <div className="text-xs font-semibold text-[var(--ink-soft)] mb-2">{t(locale, 'view')}</div>
-                <button type="button" className="view-fit-action" data-testid="view-fit" aria-pressed={viewMode === 'fit'} onClick={onFit}>
-                  {t(locale, 'fit')}
-                </button>
-              </div>
               {mobileLayout && hasMultipleDisplays && (
                 <label className="session-group rd-check-row" data-testid="display-switcher">
                   <span>{t(locale, 'displays')}</span>
@@ -423,41 +411,18 @@ function DesktopSessionMenu({
                 {sizes.length > 0 && (
                   <label className="session-group rd-check-row">
                     <span>{t(locale, 'remoteResolution')}</span>
-                    <select disabled={viewOnly} value={sizes.findIndex(s => s.width === stats.width && s.height === stats.height)}
-                      onChange={e => {
-                        const selected = sizes[Number(e.target.value)];
-                        if (selected) onResolution(selected.width, selected.height);
-                      }}>
-                      <option value={-1} disabled>{stats.width} × {stats.height}</option>
-                      {sizes.map((size, i) => <option key={i} value={i}>{size.width} × {size.height}</option>)}
-                    </select>
+                    <AdaptiveSelect label={t(locale, 'remoteResolution')} testId="resolution-select" disabled={viewOnly}
+                      value={String(sizes.findIndex(s => s.width === stats.width && s.height === stats.height))}
+                      options={[{ value: '-1', label: `${stats.width} × ${stats.height}`, disabled: true }, ...sizes.map((s,i) => ({ value: String(i), label: `${s.width} × ${s.height}` }))]}
+                      onChange={value => { const selected = sizes[Number(value)]; if (selected) onResolution(selected.width, selected.height); }} />
                   </label>
                 )}
-              <div className="session-group">
-                <div className="text-xs font-semibold text-[var(--ink-soft)] mb-2">
-                  {t(locale, 'qualityAndFps')}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {(
-                    [
-                      { value: 'low', label: t(locale, 'qualityLow') },
-                      { value: 'balanced', label: t(locale, 'qualityBalanced') },
-                      { value: 'best', label: t(locale, 'qualityBest') },
-                    ] as const
-                  ).map((q) => (
-                    <button
-                      key={q.value}
-                      type="button"
-                      className={`rd-btn${quality === q.value ? ' active' : ''}`}
-                      data-testid={`quality-${q.value}`}
-                      onClick={() => onChangeQuality(q.value, targetFps)}
-                    >
-                      {q.label}
-                    </button>
-                  ))}
-
-                </div>
-              </div>
+              <label className="session-group rd-check-row">
+                <span>{t(locale, 'qualityAndFps')}</span>
+                <AdaptiveSelect label={t(locale, 'qualityAndFps')} testId="quality-select" value={quality}
+                  options={[{ value: 'low', label: t(locale, 'qualityLow') }, { value: 'balanced', label: t(locale, 'qualityBalanced') }, { value: 'best', label: t(locale, 'qualityBest') }]}
+                  onChange={value => onChangeQuality(value as QualityLevel, targetFps)} />
+              </label>
 
               <div className="session-group flex flex-col gap-1">
                 <label className="rd-check-row">
@@ -492,21 +457,12 @@ function DesktopSessionMenu({
                   <span>{t(locale, 'enlargeCursor')}</span>
                 </label>
               </div>
-              <details className="session-group">
-                <summary className="cursor-pointer text-xs font-semibold">{t(locale, 'advancedQuality')}</summary>
+              <div className="session-group">
                 <label className="rd-check-row">
                   <span>{t(locale, 'targetFps')}</span>
-                  <select
-                    className="rd-select rd-select-inline font-mono-tabular"
-                    aria-label={t(locale, 'targetFps')}
-                    data-testid="fps-select"
-                    value={targetFps}
-                    onChange={(e) => onChangeQuality(quality, Number(e.target.value), preferredCodec)}
-                  >
-                    <option value={15}>15 fps</option>
-                    <option value={30}>30 fps</option>
-                    <option value={60}>60 fps</option>
-                  </select>
+                  <AdaptiveSelect label={t(locale, 'targetFps')} testId="fps-select" value={String(targetFps)}
+                    options={[15,30,60].map(n => ({ value: String(n), label: `${n} FPS` }))}
+                    onChange={value => onChangeQuality(quality, Number(value), preferredCodec)} />
                 </label>
                 <div className="text-xs font-semibold text-[var(--ink-soft)] my-2">
                   {t(locale, 'sessionCodecLabel')}
@@ -533,7 +489,7 @@ function DesktopSessionMenu({
                     </button>
                   ))}
                 </div>
-              </details>
+              </div>
 
             </div>
           )}
