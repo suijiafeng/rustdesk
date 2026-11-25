@@ -55,8 +55,6 @@ export interface SessionMenuProps {
   rightArmed: boolean;
   viewOnly: boolean;
   followRemoteCursor: boolean;
-  autoKeyboard: boolean;
-  onToggleAutoKeyboard: () => void;
   onToggleFollowCursor: () => void;
   sizes: { width: number; height: number }[];
   onResolution: (width: number, height: number) => void;
@@ -71,7 +69,6 @@ export interface SessionMenuProps {
   privacyPending: boolean;
   privacyIssue: boolean;
   onTogglePrivacy: () => void;
-  clipboardDisabled: boolean;
   remoteClipboard: string;
   onClose: () => void;
   onOpenConnection: () => void;

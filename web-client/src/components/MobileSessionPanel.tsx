@@ -1,12 +1,12 @@
 import React from 'react';
-import { ClipboardCopy, ClipboardPaste, Shield, Activity, Keyboard, RotateCcw, Eye, Focus, LockKeyhole, LogOut, ScanEye, Monitor, MousePointer2, Pointer, Scaling, SlidersHorizontal, Volume2 } from 'lucide-react';
+import { Shield, Activity, RotateCcw, Eye, Focus, LockKeyhole, LogOut, ScanEye, Monitor, SlidersHorizontal, Volume2 } from 'lucide-react';
 import { t, type I18nKey } from '../lib/i18n';
 import { formatConnectionError } from '../lib/errors';
 import type { SessionMenuProps } from './SessionMenu';
 import type { PreferredCodec } from '../lib/displayPrefs';
 const qualityNames = { low: 'qualityLow', balanced: 'qualityBalanced', best: 'qualityBest' } as const;
 
-export type MobilePanel = 'toolbar' | 'actions' | 'input' | 'display' | 'gestures';
+export type MobilePanel = 'toolbar' | 'actions' | 'display' | 'gestures';
 
 const gestureRows = {
   touch: [
@@ -30,33 +30,8 @@ const gestureRows = {
 
 export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePanel }) {
   const label = (key: I18nKey) => t(p.locale, key);
-  const [clipNotice, setClipNotice] = React.useState<I18nKey | null>(null);
-  const active = React.useRef(false);
-  React.useEffect(() => {
-    active.current = true;
-    return () => { active.current = false; };
-  }, []);
-  const clipboardAction = async (copyRemote: boolean) => {
-    try {
-      if (copyRemote) {
-        await navigator.clipboard.writeText(p.remoteClipboard);
-        setClipNotice('clipCopied');
-      } else {
-        const text = await navigator.clipboard.readText();
-        if (!active.current) return;
-        if (!text || new TextEncoder().encode(text).length > 256 * 1024) {
-          setClipNotice('clipInvalid');
-          return;
-        }
-        p.onSendClipboard(text);
-        setClipNotice('clipSent');
-      }
-    } catch {
-      setClipNotice('clipDenied');
-    }
-  };
   const monitors = p.peer?.displays ?? [];
-  const panelName = { toolbar: 'session', actions: 'moreActions', input: 'pointerSettings', display: 'screens', gestures: 'dockGuide' } as const;
+  const panelName = { toolbar: 'session', actions: 'moreActions', display: 'screens', gestures: 'dockGuide' } as const;
 
   const toggle = (Icon: typeof Eye, text: I18nKey, checked: boolean, change: () => void, disabled = false) => (
     <label className="tool-row"><Icon /><span>{label(text)}</span>
@@ -73,32 +48,17 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
         <section className="remote-menu-panel" role="dialog" aria-label={label(panelName[p.mobilePanel])} data-testid="session-menu">
           {p.mobilePanel === 'actions' && <>
             <div className="tool-group">
-              {toggle(Eye, 'optViewOnly', p.viewOnly, p.onToggleViewOnly)}
               {toggle(Volume2, 'remoteAudio', p.audioEnabled, p.onToggleAudio)}
               {p.audioIssue && <p role="alert">{p.audioIssue}</p>}
-            </div>
-            <div className="tool-group">
-              <button className="tool-row" disabled={p.clipboardDisabled || p.viewOnly} onClick={() => void clipboardAction(false)}><ClipboardPaste />{label('sendLocalText')}</button>
-              <button className="tool-row" disabled={p.clipboardDisabled || !p.remoteClipboard} onClick={() => void clipboardAction(true)}><ClipboardCopy />{label('copyRemoteText')}</button>
-              {clipNotice && <p role="status">{label(clipNotice)}</p>}
+              {p.peer?.privacyAllowed && toggle(Shield, 'privacyMode', p.privacyEnabled, p.onTogglePrivacy, p.privacyPending || p.viewOnly)}
+              {p.privacyPending && <p role="status">{label('privacyWaiting')}</p>}
+              {p.privacyIssue && <p role="alert">{label('privacyFailed')}</p>}
             </div>
             <div className="tool-group">{action(Activity, 'diagTitle', p.onToggleDiagnostics)}</div>
             <div className="tool-group">
               {p.peer?.restartAllowed && action(RotateCcw, 'restartDevice', p.onRestart)}
               {action(LockKeyhole, 'lockScreen', () => p.onQuickKey('Lock'))}
               {action(LogOut, 'disconnectRemote', p.onDisconnect, true)}
-            </div>
-          </>}
-          {p.mobilePanel === 'input' && <>
-            <div className="tool-group tool-options mode-options">
-              {([['touch', Pointer, true], ['mouse', MousePointer2, false]] as const).map(([name, Icon, touch]) =>
-                <button key={name} aria-pressed={p.touchMode === touch} onClick={() => { if (p.touchMode !== touch) p.onToggleTouchMode(); }}><Icon />{label(name)}</button>)}
-            </div>
-            <div className="tool-group">
-              {toggle(Keyboard, 'autoKeyboard', p.autoKeyboard, p.onToggleAutoKeyboard)}
-              {toggle(MousePointer2, 'optShowRemoteCursor', p.showRemoteCursor, p.onToggleRemoteCursor)}
-              {toggle(Scaling, 'enlargeCursor', p.enlargeCursor, p.onToggleEnlargeCursor, !p.showRemoteCursor || p.cursorEmbedded)}
-              {toggle(Focus, 'followCursor', p.followRemoteCursor, p.onToggleFollowCursor)}
             </div>
           </>}
           {p.mobilePanel === 'gestures' && <div className="tool-group">
@@ -111,9 +71,6 @@ export function MobileSessionPanel(p: SessionMenuProps & { mobilePanel: MobilePa
               <button key={d.index} aria-pressed={d.index === p.display} disabled={d.online === false}
                 onClick={() => p.onSwitchDisplay(d.index)}><Monitor />{d.name || label('screens')+' '+(d.index+1)}</button>)}</div>}
             <div className="tool-group">
-              {p.peer?.privacyAllowed && toggle(Shield, 'privacyMode', p.privacyEnabled, p.onTogglePrivacy, p.privacyPending || p.viewOnly)}
-              {p.privacyPending && <p role="status">{label('privacyWaiting')}</p>}
-              {p.privacyIssue && <p role="alert">{label('privacyFailed')}</p>}
               <details><summary><ScanEye />{label('view')}<small>{p.viewMode === 'fit' ? label('fit') : p.zoomPercent+'%'}</small></summary>
                 <div className="tool-options">
                   <button data-testid="view-fit" onClick={p.onFit}>{label('fit')}</button><button onClick={p.onOriginal}>100%</button>

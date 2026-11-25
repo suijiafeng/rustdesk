@@ -1,29 +1,34 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Keyboard, Layers2, Hand, Monitor, MousePointer2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Keyboard, Layers2, CircleHelp, Monitor, MousePointer2, Pointer } from 'lucide-react';
 import { t, type Locale } from '../lib/i18n';
 import type { MobilePanel } from './MobileSessionPanel';
 
 interface Props {
   locale: Locale;
   activePanel: MobilePanel | null;
+  touchMode: boolean;
+  onToggleTouchMode: () => void;
   onToggleKeyboard: () => void;
   onCollapse: () => void;
   onOpenMenu: (panel: MobilePanel) => void;
 }
 
-export function MobileDock({ locale, activePanel, onToggleKeyboard, onCollapse, onOpenMenu }: Props) {
+export function MobileDock({ locale, activePanel, touchMode, onToggleTouchMode, onToggleKeyboard, onCollapse, onOpenMenu }: Props) {
   const buttons = [
     ['dock-keyboard', 'keyboard', Keyboard, onToggleKeyboard, false],
-    ['dock-input-mode', 'pointerSettings', MousePointer2, () => onOpenMenu('input'), activePanel === 'input'],
+    ['dock-input-mode', touchMode ? 'touch' : 'mouse', touchMode ? Pointer : MousePointer2, onToggleTouchMode, false],
     ['dock-display', 'screens', Monitor, () => onOpenMenu('display'), activePanel === 'display'],
-    ['dock-gestures', 'dockGuide', Hand, () => onOpenMenu('gestures'), activePanel === 'gestures'],
+    ['dock-gestures', 'dockGuide', CircleHelp, () => onOpenMenu('gestures'), activePanel === 'gestures'],
     ['dock-menu', 'moreActions', Layers2, () => onOpenMenu('actions'), activePanel === 'actions'],
   ] as const;
 
   if (activePanel) return (
     <nav className="remote-tools" data-testid="mobile-dock" aria-label={t(locale, 'session')} onPointerDown={e => e.stopPropagation()}>
       {buttons.map(([id, label, Icon, action, active]) => (
-        <button key={id} type="button" data-testid={id} className={active ? 'selected' : ''} onClick={action}>
+        <button key={id} type="button" data-testid={id} className={active ? 'selected' : ''}
+          aria-label={id === 'dock-input-mode' ? t(locale, 'toggleInputMode') : undefined}
+          aria-pressed={id === 'dock-input-mode' ? touchMode : undefined}
+          onClick={action}>
           <Icon size={20} /><span>{t(locale, label)}</span>
         </button>
       ))}

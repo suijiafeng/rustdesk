@@ -35,6 +35,8 @@ const EXTRA_KEYS = [
   { label: '→', control: 'ArrowRight', aria: 'Right arrow' },
   { label: 'Home', control: 'Home' },
   { label: 'End', control: 'End' },
+  { label: 'Page Up', control: 'PageUp' },
+  { label: 'Page Down', control: 'PageDown' },
   { label: 'Del', control: 'Delete' },
 ] as const;
 

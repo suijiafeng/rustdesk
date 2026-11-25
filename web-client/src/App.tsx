@@ -356,7 +356,19 @@ export default function App() {
     setRawDetail(customText);
   }, []);
   // Display preferences (persisted locally & wired end-to-end to view, quality, codec, and input)
-  const [displayPrefs, setDisplayPrefs] = useState<DisplayPrefs>(() => loadDisplayPrefs());
+  const [displayPrefs, setDisplayPrefs] = useState<DisplayPrefs>(() => {
+    const saved = loadDisplayPrefs();
+    if (isCoarseDevice || window.innerWidth <= 768) {
+      return {
+        ...saved,
+        autoKeyboard: true,
+        showRemoteCursor: true,
+        enlargeCursor: false,
+        followRemoteCursor: false,
+      };
+    }
+    return saved;
+  });
   const displayPrefsRef = useRef(displayPrefs);
   displayPrefsRef.current = displayPrefs;
 
@@ -2809,6 +2821,11 @@ export default function App() {
         <MobileDock
           locale={locale}
           activePanel={menuOpen ? mobilePanel : null}
+          touchMode={touchMode}
+          onToggleTouchMode={() => {
+            handleToggleTouchMode();
+            setMobilePanel('toolbar');
+          }}
           onToggleKeyboard={toggleSoftKeyboard}
           onCollapse={closeChrome}
           onOpenMenu={panel => {
@@ -2900,8 +2917,6 @@ export default function App() {
           touchMode={touchMode}
           rightArmed={rightArmed}
           viewOnly={displayPrefs.viewOnly}
-          autoKeyboard={displayPrefs.autoKeyboard}
-          onToggleAutoKeyboard={() => handleUpdateDisplayPrefs({ autoKeyboard: !displayPrefs.autoKeyboard })}
           followRemoteCursor={displayPrefs.followRemoteCursor}
           onToggleFollowCursor={() => handleUpdateDisplayPrefs({ followRemoteCursor: !displayPrefs.followRemoteCursor })}
           sizes={resolutionOptions?.display === display ? resolutionOptions.sizes : []}
@@ -2922,7 +2937,6 @@ export default function App() {
             setPrivacyPending(true);
             send({ type: 'privacy', enabled: !privacyEnabled });
           }}
-          clipboardDisabled={displayPrefs.disableClipboard || peer?.clipboardAllowed === false}
           remoteClipboard={remoteClipboard}
           onClose={closeChrome}
           onOpenConnection={() => {
